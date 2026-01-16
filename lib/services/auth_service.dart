@@ -5,7 +5,7 @@ class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  // 1. FUNGSI REGISTRASI (Sesuai alur 'Input Data Diri' di diagrammu)
+  // 1. FUNGSI REGISTRASI 
   Future<void> registerPasien({
     required String email,
     required String password,
