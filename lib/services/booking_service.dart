@@ -51,4 +51,25 @@ class BookingService {
         .orderBy('nomor_antrean', descending: false)
         .snapshots();
   }
+
+  // Fungsi untuk Dokter saat selesai melayani pasien
+  Future<void> inputRekamMedis({
+    required String bookingId,
+    required String diagnosa,
+    required int biaya,
+  }) async {
+    await _db.collection('bookings').doc(bookingId).update({
+      'status': 'selesai',
+      'diagnosa': diagnosa,
+      'total_biaya': biaya,
+      'status_pembayaran': 'menunggu_pembayaran', // Sesuai alur pembayaran di diagram
+    });
+  }
+
+  // Fungsi untuk Admin mengubah status bayar
+  Future<void> verifikasiPembayaran(String bookingId) async {
+    await _db.collection('bookings').doc(bookingId).update({
+      'status_pembayaran': 'lunas',
+    });
+  }
 }
