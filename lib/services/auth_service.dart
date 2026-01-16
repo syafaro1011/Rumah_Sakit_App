@@ -46,6 +46,3 @@ class AuthService {
   }
 }
 
-// contoh push lewat vscode
-//contoh syncronize
-//ghjghgjghgjghjgjhgg
