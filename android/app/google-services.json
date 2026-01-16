@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1091099738393",
+    "project_id": "rumahsakitapp-47af1",
+    "storage_bucket": "rumahsakitapp-47af1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1091099738393:android:7af124a3fcc2f5f99f0588",
+        "android_client_info": {
+          "package_name": "com.example.rumahsakitapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDvZokkPOp70yqs4mzXOvy1B2nzfGea4sg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

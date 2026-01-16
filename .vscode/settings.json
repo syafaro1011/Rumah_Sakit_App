@@ -1,0 +1,6 @@
+{
+    "workbench.iconTheme": "vscode-icons",
+    "java.compile.nullAnalysis.mode": "automatic",
+    "java.debug.settings.onBuildFailureProceed": true
+    
+}
