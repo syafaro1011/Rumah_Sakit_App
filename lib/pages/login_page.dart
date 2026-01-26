@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:rumahsakitapp/pages/signup_page.dart';
+import 'package:rumahsakitapp/services/auth_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -23,7 +24,7 @@ class _LoginPageState extends State<LoginPage> {
             children: [
               const SizedBox(height: 40),
 
-              Container(
+              SizedBox(
                 width: 120,
                 height: 120,
                 child: Padding(
