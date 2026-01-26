@@ -3,73 +3,71 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class BookingService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
+  // Ambil daftar poli unik dari collection doctors
+  Stream<List<String>> getPoliList() {
+    return _db.collection('doctors').snapshots().map((snapshot) {
+      final setPoli = <String>{};
+      for (var doc in snapshot.docs) {
+        setPoli.add(doc['poli']);
+      }
+      return setPoli.toList();
+    });
+  }
+
+  // Ambil dokter berdasarkan poli
+  Stream<QuerySnapshot> getDokterByPoli(String poli) {
+    return _db.collection('doctors')
+        .where('poli', isEqualTo: poli)
+        .snapshots();
+  }
+
+  // Booking antrean
   Future<void> buatBooking({
     required String pasienId,
     required String dokterId,
     required String namaDokter,
+    required String poli,
   }) async {
-    // 1. Referensi ke dokumen counter untuk dokter spesifik hari ini
-    // Kita buat ID dokumen berdasarkan ID Dokter agar antrean tidak tertukar antar dokter
-    DocumentReference counterRef = _db.collection('counters').doc(dokterId);
+    String counterId = '${dokterId}_$poli';
+    DocumentReference counterRef = _db.collection('counters').doc(counterId);
 
-    // 2. Gunakan Transaction agar jika 2 orang klik bersamaan, nomor tidak bentrok
     await _db.runTransaction((transaction) async {
       DocumentSnapshot counterSnap = await transaction.get(counterRef);
 
-      int nomorBaru = 1; // Default jika belum ada antrean
+      int nomorBaru = 1;
 
       if (counterSnap.exists) {
-        // Jika sudah ada antrean, ambil nomor terakhir + 1
         nomorBaru = (counterSnap.get('last_number') ?? 0) + 1;
       }
 
-      // 3. Update nomor terakhir di koleksi counters
       transaction.set(counterRef, {
+        'dokter_id': dokterId,
+        'poli': poli,
         'last_number': nomorBaru,
         'last_update': FieldValue.serverTimestamp(),
       });
 
-      // 4. Buat dokumen booking baru di koleksi 'bookings'
       DocumentReference bookingRef = _db.collection('bookings').doc();
       transaction.set(bookingRef, {
         'booking_id': bookingRef.id,
         'pasien_id': pasienId,
         'dokter_id': dokterId,
         'nama_dokter': namaDokter,
+        'poli': poli,
         'nomor_antrean': nomorBaru,
-        'status': 'menunggu', // Sesuai Activity Diagram
+        'status': 'menunggu',
         'waktu_booking': FieldValue.serverTimestamp(),
       });
     });
   }
 
-  // Fungsi untuk memantau antrean yang sedang berjalan secara live
-  Stream<QuerySnapshot> getLiveAntrean(String dokterId) {
+  // Live antrean per dokter & poli
+  Stream<QuerySnapshot> getLiveAntrean(String dokterId, String poli) {
     return _db.collection('bookings')
         .where('dokter_id', isEqualTo: dokterId)
+        .where('poli', isEqualTo: poli)
         .where('status', isEqualTo: 'menunggu')
-        .orderBy('nomor_antrean', descending: false)
+        .orderBy('nomor_antrean')
         .snapshots();
-  }
-
-  // Fungsi untuk Dokter saat selesai melayani pasien
-  Future<void> inputRekamMedis({
-    required String bookingId,
-    required String diagnosa,
-    required int biaya,
-  }) async {
-    await _db.collection('bookings').doc(bookingId).update({
-      'status': 'selesai',
-      'diagnosa': diagnosa,
-      'total_biaya': biaya,
-      'status_pembayaran': 'menunggu_pembayaran', // Sesuai alur pembayaran di diagram
-    });
-  }
-
-  // Fungsi untuk Admin mengubah status bayar
-  Future<void> verifikasiPembayaran(String bookingId) async {
-    await _db.collection('bookings').doc(bookingId).update({
-      'status_pembayaran': 'lunas',
-    });
   }
 }
