@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:rumahsakitapp/pages/signup_page.dart';
+// Pastikan path import ini benar sesuai struktur folder Anda
 import 'package:rumahsakitapp/services/auth_service.dart';
 
 class LoginPage extends StatefulWidget {
@@ -10,7 +11,66 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
+  // 1. Tambahkan Controller dan Instance Service
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final AuthService _authService = AuthService();
+  
   bool _obscurePassword = true;
+  bool _isLoading = false; // Untuk indikator loading
+
+  // 2. Fungsi Login
+  Future<void> _handleLogin() async {
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Email dan Password harus diisi')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      // Memanggil fungsi dari AuthService
+      String? role = await _authService.loginAndGetRole(
+        _emailController.text.trim(),
+        _passwordController.text.trim(),
+      );
+
+      if (!mounted) return;
+
+      // 3. Logika Navigasi Berdasarkan Role
+      if (role == 'pasien') {
+        // Ganti dengan route Dashboard Pasien Anda
+        // Navigator.pushReplacementNamed(context, '/dashboard-pasien');
+        print("Login sukses sebagai Pasien");
+      } else if (role == 'dokter') {
+        print("Login sukses sebagai Dokter");
+      } else if (role == 'admin') {
+        Navigator.pushReplacementNamed(context, '/splash-screen');
+        print("Login sukses sebagai Admin");
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Login Berhasil sebagai $role')),
+      );
+
+    } catch (e) {
+      // Menangani error (Password salah, User tidak ditemukan, dll)
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Login Gagal: ${e.toString()}')),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +83,6 @@ class _LoginPageState extends State<LoginPage> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               const SizedBox(height: 40),
-
               SizedBox(
                 width: 120,
                 height: 120,
@@ -35,14 +94,11 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
               ),
-
               const SizedBox(height: 20),
-
               const Text(
                 'Sign In',
                 style: TextStyle(fontSize: 26, fontWeight: FontWeight.w600),
               ),
-
               const SizedBox(height: 32),
 
               /// EMAIL
@@ -50,6 +106,7 @@ class _LoginPageState extends State<LoginPage> {
                 label: 'Email',
                 hint: 'example@email.com',
                 icon: Icons.email_outlined,
+                controller: _emailController, // Tambahkan controller
               ),
 
               const SizedBox(height: 20),
@@ -59,6 +116,7 @@ class _LoginPageState extends State<LoginPage> {
                 label: 'Password',
                 hint: '••••••••',
                 icon: Icons.lock_outline,
+                controller: _passwordController, // Tambahkan controller
                 obscureText: _obscurePassword,
                 suffixIcon: IconButton(
                   icon: Icon(
@@ -74,7 +132,6 @@ class _LoginPageState extends State<LoginPage> {
 
               const SizedBox(height: 12),
 
-              /// LUPA PASSWORD
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
@@ -93,7 +150,7 @@ class _LoginPageState extends State<LoginPage> {
                 width: double.infinity,
                 height: 52,
                 child: ElevatedButton(
-                  onPressed: () {},
+                  onPressed: _isLoading ? null : _handleLogin, // Disable jika loading
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF3F6DF6),
                     shape: RoundedRectangleBorder(
@@ -101,20 +158,21 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     elevation: 3,
                   ),
-                  child: const Text(
-                    'Sign In',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
-                  ),
+                  child: _isLoading 
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text(
+                        'Sign In',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
                 ),
               ),
 
               const SizedBox(height: 30),
 
-              /// REGISTER
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -150,6 +208,7 @@ class _LoginPageState extends State<LoginPage> {
     required String label,
     required String hint,
     required IconData icon,
+    required TextEditingController controller, // Tambahkan param ini
     bool obscureText = false,
     Widget? suffixIcon,
   }) {
@@ -171,6 +230,7 @@ class _LoginPageState extends State<LoginPage> {
             ],
           ),
           child: TextField(
+            controller: controller, // Hubungkan controller ke TextField
             obscureText: obscureText,
             decoration: InputDecoration(
               hintText: hint,
