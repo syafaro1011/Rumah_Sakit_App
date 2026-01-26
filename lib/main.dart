@@ -1,27 +1,24 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart';
+import 'pages/splash_screen.dart';
 
-void main() async{
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-  
-  runApp(const MainApp());
-
+void main() {
+  runApp(const MyApp());
 }
 
-class MainApp extends StatelessWidget {
-  const MainApp({super.key});
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: Scaffold(
-        body: Center(
-          child: Text('Hello World!'),
-        ),
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'Heal Sync',
+      theme: ThemeData(
+        fontFamily: 'Poppins',
+        primaryColor: const Color(0xFF3F6DF6),
+        scaffoldBackgroundColor: Colors.white,
       ),
+      home: const SplashScreen(),
     );
   }
 }
