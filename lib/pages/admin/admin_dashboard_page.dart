@@ -60,7 +60,7 @@ Widget _statSection() {
     mainAxisAlignment: MainAxisAlignment.spaceBetween,
     children: [
       StreamBuilder<int>(
-        stream: AdminService().getCountByRole('dokter'),
+        stream: AdminService().getDoctorsCount(),
         builder: (context, snapshot) => _StatCard(
           title: 'Total Dokter',
           value: snapshot.data.toString(),
@@ -195,7 +195,7 @@ Widget _searchField() {
 
 Widget _doctorList() {
     return StreamBuilder<QuerySnapshot>(
-      stream: AdminService().getDoctorsStream(),
+      stream: AdminService().getAllDoctors(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());

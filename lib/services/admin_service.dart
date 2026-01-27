@@ -1,6 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../services/admin_service.dart';
+
 class AdminService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -24,11 +24,11 @@ class AdminService {
   }
 
   // 3. Mengambil Stream daftar seluruh dokter
-  Stream<QuerySnapshot> getDoctorsStream() {
+  Stream<int> getDoctorsCount() {
     return _db
-        .collection('users')
-        .where('role', isEqualTo: 'dokter')
-        .snapshots();
+        .collection('doctors')
+        .snapshots()
+        .map((snapshot) => snapshot.docs.length);
   }
 
   // ===============================
@@ -48,6 +48,14 @@ class AdminService {
 
       String uid = userCredential.user!.uid;
 
+      await _db.collection('users').doc(uid).set({
+        'uid': uid,
+        'nama': nama,
+        'email': email,
+        'role': 'dokter',
+        'created_at': Timestamp.now(),
+      });
+
       await _db.collection('doctors').doc(uid).set({
         'uid': uid,
         'nama': nama,
@@ -55,7 +63,6 @@ class AdminService {
         'email': email,
         'no_str': noStr,
         'no_hp': noHp,
-        'role': 'doctor',
         'status': 'aktif',
         'created_at': Timestamp.now(),
       });
