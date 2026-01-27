@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'doctor_model.dart';
+import '../../model/doctor_model.dart';
 
 class DoctorFormPage extends StatefulWidget {
   final DoctorModel? initialDoctor;

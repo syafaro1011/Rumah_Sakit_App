@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'doctor_model.dart';
+import '../../model/doctor_model.dart';
 import 'doctor_form_page.dart';
 
 class ManageDoctorPage extends StatefulWidget {
