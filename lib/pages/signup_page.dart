@@ -11,6 +11,8 @@ class _SignUpPageState extends State<SignUpPage> {
   bool _obscurePassword = true;
   bool _agree = false;
 
+  final TextEditingController _tanggalLahirController = TextEditingController();
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -60,14 +62,22 @@ class _SignUpPageState extends State<SignUpPage> {
                 label: 'Tanggal Lahir',
                 hint: 'dd/mm/yyyy',
                 icon: Icons.calendar_today_outlined,
+                controller: _tanggalLahirController,
                 readOnly: true,
                 onTap: () async {
-                  await showDatePicker(
+                  final pickedDate = await showDatePicker(
                     context: context,
                     initialDate: DateTime(2000),
                     firstDate: DateTime(1950),
                     lastDate: DateTime.now(),
                   );
+
+                  if (pickedDate != null) {
+                    _tanggalLahirController.text =
+                        "${pickedDate.day.toString().padLeft(2, '0')}/"
+                        "${pickedDate.month.toString().padLeft(2, '0')}/"
+                        "${pickedDate.year}";
+                  }
                 },
               ),
 
@@ -166,6 +176,7 @@ class _SignUpPageState extends State<SignUpPage> {
     required String label,
     required String hint,
     required IconData icon,
+    TextEditingController? controller,
     bool obscureText = false,
     bool readOnly = false,
     TextInputType? keyboardType,
@@ -179,6 +190,7 @@ class _SignUpPageState extends State<SignUpPage> {
         children: [
           Text(label, style: const TextStyle(color: Colors.grey, fontSize: 14)),
           const SizedBox(height: 8),
+
           Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(14),
@@ -191,11 +203,14 @@ class _SignUpPageState extends State<SignUpPage> {
                 ),
               ],
             ),
+
+            /// 🔥 INI YANG DIPERBAIKI
             child: TextField(
+              controller: controller, // ← WAJIB
               obscureText: obscureText,
               readOnly: readOnly,
               keyboardType: keyboardType,
-              onTap: onTap,
+              onTap: onTap, // ← WAJIB
               decoration: InputDecoration(
                 hintText: hint,
                 prefixIcon: Icon(icon),
