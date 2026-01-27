@@ -89,7 +89,7 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
           children: [
             Text(
               'Welcome Back, $nama!',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
             ),
             SizedBox(height: 6),
             Row(
