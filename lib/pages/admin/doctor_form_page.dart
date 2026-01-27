@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
 import '../../model/doctor_model.dart';
 
@@ -12,6 +14,7 @@ class DoctorFormPage extends StatefulWidget {
 
 class _DoctorFormPageState extends State<DoctorFormPage> {
   final _formKey = GlobalKey<FormState>();
+  final picker = ImagePicker();
 
   late TextEditingController nameController;
   late TextEditingController experienceController;
@@ -21,6 +24,7 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
 
   String? selectedSpecialist;
   late List<DoctorSchedule> schedules;
+  File? selectedImage;
 
   final List<String> specialists = [
     'Poli Umum',
@@ -54,7 +58,22 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
 
     selectedSpecialist = d?.poli;
     schedules = d != null ? List.from(d.schedules) : [];
+
+    if (d?.photoPath != null) {
+      selectedImage = File(d!.photoPath!);
+    }
   }
+
+  // ================= IMAGE =================
+
+  Future<void> _pickImage() async {
+    final picked = await picker.pickImage(source: ImageSource.gallery);
+    if (picked != null) {
+      setState(() => selectedImage = File(picked.path));
+    }
+  }
+
+  // ================= UI =================
 
   @override
   Widget build(BuildContext context) {
@@ -70,6 +89,9 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              _photoPicker(),
+              const SizedBox(height: 20),
+
               _title(),
               const SizedBox(height: 20),
 
@@ -93,7 +115,23 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
     );
   }
 
-  // ================= UI =================
+  Widget _photoPicker() {
+    return Center(
+      child: InkWell(
+        onTap: _pickImage,
+        child: CircleAvatar(
+          radius: 48,
+          backgroundColor: Colors.grey.shade200,
+          backgroundImage: selectedImage != null
+              ? FileImage(selectedImage!)
+              : null,
+          child: selectedImage == null
+              ? const Icon(Icons.camera_alt, color: Colors.grey)
+              : null,
+        ),
+      ),
+    );
+  }
 
   Widget _title() => Text(
     isEdit ? 'Edit Data Dokter' : 'Input Data Dokter',
@@ -243,8 +281,9 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
       email: emailController.text,
       phone: phoneController.text,
       experience: experienceController.text,
-      isActive: widget.initialDoctor?.isActive ?? true,
       schedules: schedules,
+      isActive: widget.initialDoctor?.isActive ?? true,
+      photoPath: selectedImage?.path,
     );
 
     Navigator.pop(context, result);
