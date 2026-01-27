@@ -92,12 +92,9 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
             ),
             SizedBox(height: 6),
-            Row(
-              children: [
-                Icon(Icons.location_on_outlined, size: 16, color: Colors.grey),
-                SizedBox(width: 4),
-                Text('Bandung, Soreang', style: TextStyle(color: Colors.grey)),
-              ],
+            Text(
+              'Semoga sehat selalu ya!',
+              style: TextStyle(color: Colors.grey),
             ),
           ],
         ),
