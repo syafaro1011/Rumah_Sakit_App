@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'doctor_list_page.dart';
 
 class PilihPoliPage extends StatelessWidget {
   const PilihPoliPage({super.key});
@@ -64,7 +65,14 @@ class PilihPoliPage extends StatelessWidget {
               icon: Icons.remove_red_eye_outlined,
               title: 'Poli Mata',
               bgColor: const Color(0xFFEAF1FF),
-              onTap: () {},
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const DoctorListPage(poliName: 'Poli Mata'),
+                  ),
+                );
+              },
             ),
             _poliCard(
               icon: Icons.medical_services_outlined,

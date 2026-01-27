@@ -1,3 +1,3 @@
 # rumahsakitapp
 
-A new Flutter project.
+Aplikasi Rumah Sakit ini merupakan sistem manajemen dan layanan kesehatan digital berbasis mobile yang menggunakan Firebase sebagai backend utama untuk autentikasi dan pengelolaan data secara real-time. Aplikasi ini menyediakan fitur registrasi dan login pasien serta admin, pendaftaran dan pengelolaan data pasien, booking dokter online, manajemen jadwal dan data dokter, antrian online dengan estimasi waktu, serta dokumentasi layanan seperti rekam medis, pembayaran, dan notifikasi. Dengan memanfaatkan Firebase Authentication, Firestore/Realtime Database, dan Cloud Messaging, sistem ini dirancang untuk meningkatkan efisiensi pelayanan rumah sakit, mempermudah akses pasien, serta memastikan data tersimpan secara aman, terstruktur, dan mudah dikelola.
