@@ -115,24 +115,18 @@ class _SignUpPageState extends State<SignUpPage> {
                 controller: _tanggalLahirController,
                 readOnly: true,
                 onTap: () async {
-                  // 1. Munculkan kalender
-                  DateTime? pickedDate = await showDatePicker(
+                  final pickedDate = await showDatePicker(
                     context: context,
                     initialDate: DateTime(2000),
                     firstDate: DateTime(1950),
                     lastDate: DateTime.now(),
                   );
 
-                  // 2. Jika user memilih tanggal (tidak menekan cancel)
                   if (pickedDate != null) {
-                    // 3. Format tanggal menjadi String (YYYY-MM-DD)
-                    String formattedDate =
-                        "${pickedDate.year}-${pickedDate.month.toString().padLeft(2, '0')}-${pickedDate.day.toString().padLeft(2, '0')}";
-
-                    // 4. Masukkan ke controller agar tampil di UI
-                    setState(() {
-                      _tanggalLahirController.text = formattedDate;
-                    });
+                    _tanggalLahirController.text =
+                        "${pickedDate.day.toString().padLeft(2, '0')}/"
+                        "${pickedDate.month.toString().padLeft(2, '0')}/"
+                        "${pickedDate.year}";
                   }
                 },
               ),
@@ -234,7 +228,6 @@ class _SignUpPageState extends State<SignUpPage> {
     required String label,
     required String hint,
     required IconData icon,
-    required TextEditingController controller,
     bool obscureText = false,
     bool readOnly = false,
     TextInputType? keyboardType,
@@ -248,6 +241,7 @@ class _SignUpPageState extends State<SignUpPage> {
         children: [
           Text(label, style: const TextStyle(color: Colors.grey, fontSize: 14)),
           const SizedBox(height: 8),
+
           Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(14),
@@ -260,11 +254,14 @@ class _SignUpPageState extends State<SignUpPage> {
                 ),
               ],
             ),
+
+            /// 🔥 INI YANG DIPERBAIKI
             child: TextField(
+              controller: controller, // ← WAJIB
               obscureText: obscureText,
               readOnly: readOnly,
               keyboardType: keyboardType,
-              onTap: onTap,
+              onTap: onTap, // ← WAJIB
               decoration: InputDecoration(
                 hintText: hint,
                 prefixIcon: Icon(icon),
