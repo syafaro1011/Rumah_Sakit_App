@@ -10,6 +10,7 @@ class DoctorModel {
   String experience;
   bool isActive;
   List<DoctorSchedule> schedules;
+  String? photoPath; // NGke ganti ku photoUrl
 
   DoctorModel({
     required this.id,
@@ -21,6 +22,7 @@ class DoctorModel {
     required this.experience,
     required this.isActive,
     required this.schedules,
+    this.photoPath,
   });
 }
 
