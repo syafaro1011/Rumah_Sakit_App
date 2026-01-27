@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:rumahsakitapp/pages/signup_page.dart';
+import 'package:rumahsakitapp/routes/app_routes.dart';
 // Pastikan path import ini benar sesuai struktur folder Anda
 import 'package:rumahsakitapp/services/auth_service.dart';
 
@@ -41,13 +42,13 @@ class _LoginPageState extends State<LoginPage> {
 
       // 3. Logika Navigasi Berdasarkan Role
       if (role == 'pasien') {
-        // Ganti dengan route Dashboard Pasien Anda
-        // Navigator.pushReplacementNamed(context, '/dashboard-pasien');
+        Navigator.pushReplacementNamed(context, AppRoutes.patientDashboard);
         print("Login sukses sebagai Pasien");
       } else if (role == 'dokter') {
+        Navigator.pushReplacementNamed(context, AppRoutes.doctorDashboard);
         print("Login sukses sebagai Dokter");
       } else if (role == 'admin') {
-        Navigator.pushReplacementNamed(context, '/splash-screen');
+        Navigator.pushReplacementNamed(context, AppRoutes.adminDashboard);
         print("Login sukses sebagai Admin");
       }
 
