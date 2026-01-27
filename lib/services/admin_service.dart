@@ -41,6 +41,7 @@ class AdminService {
     required String password,
     required String noStr,
     required String noHp,
+    List<Map<String, dynamic>>? jadwal, // Tambahan parameter optional
   }) async {
     try {
       UserCredential userCredential = await _auth
@@ -48,6 +49,7 @@ class AdminService {
 
       String uid = userCredential.user!.uid;
 
+      // Simpan ke collection Users (untuk login)
       await _db.collection('users').doc(uid).set({
         'uid': uid,
         'nama': nama,
@@ -56,6 +58,7 @@ class AdminService {
         'created_at': Timestamp.now(),
       });
 
+      // Simpan ke collection Doctors (profil lengkap)
       await _db.collection('doctors').doc(uid).set({
         'uid': uid,
         'nama': nama,
@@ -66,6 +69,13 @@ class AdminService {
         'status': 'aktif',
         'created_at': Timestamp.now(),
       });
+
+      // Jika ada jadwal awal, masukkan ke sub-collection
+      if (jadwal != null) {
+        for (var j in jadwal) {
+          await _db.collection('doctors').doc(uid).collection('jadwal').add(j);
+        }
+      }
     } catch (e) {
       rethrow;
     }
@@ -74,18 +84,16 @@ class AdminService {
   // ===============================
   // 2. UPDATE DATA DOKTER
   // ===============================
- Future<void> updateDoctor(String doctorId, Map<String, dynamic> data) async {
-  await _db.collection('doctors').doc(doctorId).update(data);
-}
-
+  Future<void> updateDoctor(String doctorId, Map<String, dynamic> data) async {
+    await _db.collection('doctors').doc(doctorId).update(data);
+  }
 
   // ===============================
   // 3. DELETE DOKTER
   // ===============================
   Future<void> deleteDoctor(String doctorId) async {
-  await _db.collection('doctors').doc(doctorId).delete();
-}
-
+    await _db.collection('doctors').doc(doctorId).delete();
+  }
 
   // ===============================
   // 4. GET ALL DOKTER

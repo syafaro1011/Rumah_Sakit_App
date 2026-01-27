@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 
 class DoctorModel {
   final String id;
-  String name;
+  String nama;
   String poli;
   String sip;
   String email;
+  String password;
   String phone;
   String experience;
   bool isActive;
@@ -14,10 +15,11 @@ class DoctorModel {
 
   DoctorModel({
     required this.id,
-    required this.name,
+    required this.nama,
     required this.poli,
     required this.sip,
     required this.email,
+    required this.password,
     required this.phone,
     required this.experience,
     required this.isActive,

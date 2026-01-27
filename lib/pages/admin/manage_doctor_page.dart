@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../services/admin_service.dart';
+import '../../model/doctor_model.dart';
 import 'doctor_form_page.dart';
 
 class ManageDoctorPage extends StatefulWidget {
@@ -11,7 +10,31 @@ class ManageDoctorPage extends StatefulWidget {
 }
 
 class _ManageDoctorPageState extends State<ManageDoctorPage> {
-  final AdminService _adminService = AdminService();
+  final List<DoctorModel> doctors = [
+    DoctorModel(
+      id: '1',
+      nama: 'Dr. FUFUFAFA',
+      poli: 'Poli Gigi',
+      sip: '1232141234',
+      email: 'fufufafa@example.com',
+      password: 'password123',
+      phone: '0821321324215',
+      experience: '10 Tahun',
+      isActive: true,
+      schedules: [
+        DoctorSchedule(
+          day: 'Senin',
+          start: const TimeOfDay(hour: 8, minute: 0),
+          end: const TimeOfDay(hour: 13, minute: 0),
+        ),
+        DoctorSchedule(
+          day: 'Kamis',
+          start: const TimeOfDay(hour: 15, minute: 0),
+          end: const TimeOfDay(hour: 20, minute: 0),
+        ),
+      ],
+    ),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -22,27 +45,10 @@ class _ManageDoctorPageState extends State<ManageDoctorPage> {
         children: [
           _searchBar(),
           Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: _adminService.getAllDoctors(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return const Center(child: Text('Belum ada dokter'));
-                }
-
-                final docs = snapshot.data!.docs;
-
-                return ListView.builder(
-                  itemCount: docs.length,
-                  itemBuilder: (context, index) {
-                    final data = docs[index].data() as Map<String, dynamic>;
-                    final docId = docs[index].id;
-                    return _doctorCardFirestore(data, docId);
-                  },
-                );
+            child: ListView.builder(
+              itemCount: doctors.length,
+              itemBuilder: (context, index) {
+                return _doctorCard(doctors[index]);
               },
             ),
           ),
@@ -71,11 +77,15 @@ class _ManageDoctorPageState extends State<ManageDoctorPage> {
       ),
       actions: [
         IconButton(
-          onPressed: () {
-            Navigator.push(
+          onPressed: () async {
+            final result = await Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const DoctorFormPage()),
             );
+
+            if (result != null) {
+              setState(() => doctors.add(result));
+            }
           },
           icon: Container(
             padding: const EdgeInsets.all(8),
@@ -107,18 +117,16 @@ class _ManageDoctorPageState extends State<ManageDoctorPage> {
       child: const TextField(
         decoration: InputDecoration(
           icon: Icon(Icons.search),
-          hintText: 'Cari dokter',
+          hintText: 'cari dokter',
           border: InputBorder.none,
         ),
       ),
     );
   }
 
-  // ================= CARD FIRESTORE =================
+  // ================= CARD =================
 
-  Widget _doctorCardFirestore(Map<String, dynamic> doctor, String docId) {
-    final bool isActive = doctor['status'] == 'aktif';
-
+  Widget _doctorCard(DoctorModel doctor) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.all(16),
@@ -141,53 +149,61 @@ class _ManageDoctorPageState extends State<ManageDoctorPage> {
             children: [
               Expanded(
                 child: Text(
-                  doctor['nama'] ?? '-',
+                  doctor.nama,
                   style: const TextStyle(
-                      fontWeight: FontWeight.w700, fontSize: 16),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                  ),
                 ),
               ),
               Switch(
-                value: isActive,
+                value: doctor.isActive,
                 activeColor: Colors.green,
                 onChanged: (value) {
-                  _adminService.updateStatusDokter(
-                    dokterId: docId,
-                    status: value ? 'aktif' : 'nonaktif',
-                  );
+                  setState(() => doctor.isActive = value);
                 },
               ),
             ],
           ),
-          Text(doctor['poli'] ?? '-',
-              style: TextStyle(color: Colors.grey.shade600)),
+          Text(doctor.poli, style: TextStyle(color: Colors.grey.shade600)),
           const SizedBox(height: 4),
           Text(
-            'STR - ${doctor['no_str'] ?? '-'}',
+            'SIP - ${doctor.sip}',
             style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
           ),
 
           const Divider(height: 28),
 
-          _infoRow(Icons.email_outlined, 'Email', doctor['email'] ?? '-'),
-          _infoRow(Icons.phone_outlined, 'No. Telpon', doctor['no_hp'] ?? '-'),
+          _infoRow(Icons.email_outlined, 'Email', doctor.email),
+          _infoRow(Icons.phone_outlined, 'No. Telpon', doctor.phone),
+          _infoRow(
+            Icons.calendar_today_outlined,
+            'Jadwal Praktik',
+            _formatSchedule(doctor.schedules),
+          ),
 
           const SizedBox(height: 14),
 
+          /// ACTION
           Row(
             children: [
               _iconButton(
                 icon: Icons.edit_outlined,
                 color: Colors.grey.shade200,
-                onTap: () {
-                  Navigator.push(
+                onTap: () async {
+                  final result = await Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => DoctorFormPage(
-                        doctorId: docId,
-                        initialData: doctor,
-                      ),
+                      builder: (_) => DoctorFormPage(initialDoctor: doctor),
                     ),
                   );
+
+                  if (result != null) {
+                    setState(() {
+                      final index = doctors.indexOf(doctor);
+                      doctors[index] = result;
+                    });
+                  }
                 },
               ),
               const SizedBox(width: 10),
@@ -195,10 +211,10 @@ class _ManageDoctorPageState extends State<ManageDoctorPage> {
                 icon: Icons.delete_outline,
                 color: Colors.red.shade100,
                 iconColor: Colors.red,
-                onTap: () => _deleteDoctorFirestore(docId),
+                onTap: () => _deleteDoctor(doctor),
               ),
               const Spacer(),
-              _statusBadge(isActive),
+              _statusBadge(doctor.isActive),
             ],
           ),
         ],
@@ -220,8 +236,10 @@ class _ManageDoctorPageState extends State<ManageDoctorPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title,
-                    style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                Text(
+                  title,
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                ),
                 Text(value),
               ],
             ),
@@ -229,6 +247,14 @@ class _ManageDoctorPageState extends State<ManageDoctorPage> {
         ],
       ),
     );
+  }
+
+  String _formatSchedule(List<DoctorSchedule> schedules) {
+    return schedules
+        .map((s) {
+          return '${s.day}: ${s.start.format(context)} - ${s.end.format(context)}';
+        })
+        .join('\n');
   }
 
   Widget _iconButton({
@@ -269,7 +295,7 @@ class _ManageDoctorPageState extends State<ManageDoctorPage> {
     );
   }
 
-  void _deleteDoctorFirestore(String doctorId) async {
-    await _adminService.deleteDoctor(doctorId);
+  void _deleteDoctor(DoctorModel doctor) {
+    setState(() => doctors.remove(doctor));
   }
 }
