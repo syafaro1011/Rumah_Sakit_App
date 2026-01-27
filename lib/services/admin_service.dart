@@ -1,6 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-
+import '../../services/admin_service.dart';
 class AdminService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -67,28 +67,18 @@ class AdminService {
   // ===============================
   // 2. UPDATE DATA DOKTER
   // ===============================
-  Future<void> updateDoctor({
-    required String dokterId,
-    required Map<String, dynamic> data,
-  }) async {
-    try {
-      await _db.collection('doctors').doc(dokterId).update(data);
-    } catch (e) {
-      rethrow;
-    }
-  }
+ Future<void> updateDoctor(String doctorId, Map<String, dynamic> data) async {
+  await _db.collection('doctors').doc(doctorId).update(data);
+}
+
 
   // ===============================
   // 3. DELETE DOKTER
   // ===============================
-  Future<void> deleteDoctor(String dokterId) async {
-    try {
-      await _db.collection('doctors').doc(dokterId).delete();
-      // NOTE: Firebase Auth user harus dihapus via Cloud Function / Admin SDK
-    } catch (e) {
-      rethrow;
-    }
-  }
+  Future<void> deleteDoctor(String doctorId) async {
+  await _db.collection('doctors').doc(doctorId).delete();
+}
+
 
   // ===============================
   // 4. GET ALL DOKTER

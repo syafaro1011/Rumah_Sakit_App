@@ -4,12 +4,14 @@ class DoctorDetailPage extends StatefulWidget {
   final String name;
   final String specialist;
   final String image;
+  final String doctorId;
 
   const DoctorDetailPage({
     super.key,
     required this.name,
     required this.specialist,
     required this.image,
+    required this.doctorId,
   });
 
   @override

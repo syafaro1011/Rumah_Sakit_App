@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import '../../model/doctor_model.dart';
+import '../../services/admin_service.dart';
 
 class DoctorFormPage extends StatefulWidget {
-  final DoctorModel? initialDoctor;
+  final String? doctorId;
+  final Map<String, dynamic>? initialData;
 
-  const DoctorFormPage({super.key, this.initialDoctor});
+  const DoctorFormPage({super.key, this.doctorId, this.initialData});
 
   @override
   State<DoctorFormPage> createState() => _DoctorFormPageState();
@@ -12,48 +13,38 @@ class DoctorFormPage extends StatefulWidget {
 
 class _DoctorFormPageState extends State<DoctorFormPage> {
   final _formKey = GlobalKey<FormState>();
+  final AdminService _adminService = AdminService();
 
-  late TextEditingController nameController;
-  late TextEditingController experienceController;
-  late TextEditingController emailController;
-  late TextEditingController sipController;
-  late TextEditingController phoneController;
+  late TextEditingController namaC;
+  late TextEditingController emailC;
+  late TextEditingController passwordC;
+  late TextEditingController noStrC;
+  late TextEditingController noHpC;
 
-  String? selectedSpecialist;
-  late List<DoctorSchedule> schedules;
+  String? selectedPoli;
 
-  final List<String> specialists = [
+  bool get isEdit => widget.doctorId != null;
+
+  final List<String> poliList = [
     'Poli Umum',
     'Poli Gigi',
     'Poli Saraf',
+    'Poli Mata',
     'Poli Anak',
   ];
-
-  final List<String> days = [
-    'Senin',
-    'Selasa',
-    'Rabu',
-    'Kamis',
-    'Jumat',
-    'Sabtu',
-  ];
-
-  bool get isEdit => widget.initialDoctor != null;
 
   @override
   void initState() {
     super.initState();
 
-    final d = widget.initialDoctor;
+    final d = widget.initialData;
 
-    nameController = TextEditingController(text: d?.name);
-    experienceController = TextEditingController(text: d?.experience);
-    emailController = TextEditingController(text: d?.email);
-    sipController = TextEditingController(text: d?.sip);
-    phoneController = TextEditingController(text: d?.phone);
-
-    selectedSpecialist = d?.poli;
-    schedules = d != null ? List.from(d.schedules) : [];
+    namaC = TextEditingController(text: d?['nama']);
+    emailC = TextEditingController(text: d?['email']);
+    passwordC = TextEditingController();
+    noStrC = TextEditingController(text: d?['no_str']);
+    noHpC = TextEditingController(text: d?['no_hp']);
+    selectedPoli = d?['poli'];
   }
 
   @override
@@ -63,28 +54,19 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
         title: Text(isEdit ? 'Edit Dokter' : 'Tambah Dokter'),
         backgroundColor: const Color(0xFF3F6DF6),
       ),
-      body: SingleChildScrollView(
+      body: Padding(
         padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: ListView(
             children: [
-              _title(),
-              const SizedBox(height: 20),
-
-              _field('Nama Lengkap *', nameController),
+              _field('Nama Dokter', namaC),
               _dropdown(),
-              _field('Pengalaman', experienceController, hint: '10 Tahun'),
-              _field('Email *', emailController),
-              _field('SIP *', sipController),
-              _field('Nomor Telepon *', phoneController),
-
+              _field('Email', emailC, enabled: !isEdit),
+              if (!isEdit) _field('Password', passwordC, obscure: true),
+              _field('No STR', noStrC),
+              _field('No HP', noHpC),
               const SizedBox(height: 24),
-              _scheduleHeader(),
-              ..._scheduleList(),
-
-              const SizedBox(height: 32),
               _submitButton(),
             ],
           ),
@@ -95,20 +77,21 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
 
   // ================= UI =================
 
-  Widget _title() => Text(
-    isEdit ? 'Edit Data Dokter' : 'Input Data Dokter',
-    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-  );
-
-  Widget _field(String label, TextEditingController c, {String? hint}) {
+  Widget _field(
+    String label,
+    TextEditingController c, {
+    bool obscure = false,
+    bool enabled = true,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: TextFormField(
         controller: c,
+        obscureText: obscure,
+        enabled: enabled,
         validator: (v) => v == null || v.isEmpty ? 'Wajib diisi' : null,
         decoration: InputDecoration(
           labelText: label,
-          hintText: hint,
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
         ),
       ),
@@ -119,134 +102,61 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: DropdownButtonFormField<String>(
-        value: selectedSpecialist,
-        items: specialists
+        value: selectedPoli,
+        items: poliList
             .map((e) => DropdownMenuItem(value: e, child: Text(e)))
             .toList(),
-        onChanged: (v) => setState(() => selectedSpecialist = v),
+        onChanged: (v) => setState(() => selectedPoli = v),
         validator: (v) => v == null ? 'Wajib dipilih' : null,
         decoration: InputDecoration(
-          labelText: 'Spesialis',
+          labelText: 'Poli',
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
         ),
       ),
     );
   }
 
-  Widget _scheduleHeader() {
-    return Row(
-      children: [
-        const Text(
-          'Jadwal Praktik',
-          style: TextStyle(fontWeight: FontWeight.w600),
-        ),
-        const Spacer(),
-        TextButton.icon(
-          onPressed: _addSchedule,
-          icon: const Icon(Icons.add),
-          label: const Text('Tambah'),
-        ),
-      ],
-    );
-  }
-
-  List<Widget> _scheduleList() {
-    return List.generate(schedules.length, (i) {
-      final s = schedules[i];
-      return Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.grey.shade300),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: DropdownButton<String>(
-                value: s.day,
-                isExpanded: true,
-                items: days
-                    .map((d) => DropdownMenuItem(value: d, child: Text(d)))
-                    .toList(),
-                onChanged: (v) => setState(() => s.day = v!),
-              ),
-            ),
-            _time(s.start, (t) => setState(() => s.start = t)),
-            const Text(' - '),
-            _time(s.end, (t) => setState(() => s.end = t)),
-            IconButton(
-              icon: const Icon(Icons.close, color: Colors.red),
-              onPressed: () => setState(() => schedules.removeAt(i)),
-            ),
-          ],
-        ),
-      );
-    });
-  }
-
-  Widget _time(TimeOfDay t, Function(TimeOfDay) onPick) {
-    return InkWell(
-      onTap: () async {
-        final r = await showTimePicker(context: context, initialTime: t);
-        if (r != null) onPick(r);
-      },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        child: Text(t.format(context)),
-      ),
-    );
-  }
-
   Widget _submitButton() {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF3F6DF6),
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-        ),
-        onPressed: _submit,
-        child: Text(
-          isEdit ? 'Simpan Perubahan' : 'Tambah Dokter',
-          style: const TextStyle(fontSize: 16),
-        ),
+    return ElevatedButton(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFF3F6DF6),
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
+      onPressed: _submit,
+      child: Text(isEdit ? 'Simpan Perubahan' : 'Tambah Dokter'),
     );
   }
 
   // ================= LOGIC =================
 
-  void _addSchedule() {
-    setState(() {
-      schedules.add(
-        DoctorSchedule(
-          day: days.first,
-          start: const TimeOfDay(hour: 8, minute: 0),
-          end: const TimeOfDay(hour: 13, minute: 0),
-        ),
-      );
-    });
-  }
-
-  void _submit() {
+  void _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final result = DoctorModel(
-      id: widget.initialDoctor?.id ?? DateTime.now().toString(),
-      name: nameController.text,
-      poli: selectedSpecialist!,
-      sip: sipController.text,
-      email: emailController.text,
-      phone: phoneController.text,
-      experience: experienceController.text,
-      isActive: widget.initialDoctor?.isActive ?? true,
-      schedules: schedules,
-    );
+    try {
+      if (isEdit) {
+        await _adminService.updateDoctor(widget.doctorId!, {
+          'nama': namaC.text,
+          'poli': selectedPoli,
+          'no_str': noStrC.text,
+          'no_hp': noHpC.text,
+        });
+      } else {
+        await _adminService.createDoctor(
+          nama: namaC.text,
+          poli: selectedPoli!,
+          email: emailC.text,
+          password: passwordC.text,
+          noStr: noStrC.text,
+          noHp: noHpC.text,
+        );
+      }
 
-    Navigator.pop(context, result);
+      Navigator.pop(context, true);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal menyimpan: $e')),
+      );
+    }
   }
 }

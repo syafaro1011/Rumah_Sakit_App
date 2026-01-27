@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'doctor_detail_page.dart';
 
 class DoctorListPage extends StatelessWidget {
@@ -8,8 +9,6 @@ class DoctorListPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final doctors = _dummyDoctors[poliName] ?? []; //MASIH DUMMY
-
     return Scaffold(
       appBar: AppBar(
         leading: const BackButton(color: Colors.black),
@@ -31,16 +30,40 @@ class DoctorListPage extends StatelessWidget {
               poliName,
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
             ),
-
             const SizedBox(height: 20),
 
+            // 🔥 STREAM FIRESTORE
             Expanded(
-              child: ListView.separated(
-                itemCount: doctors.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  final doctor = doctors[index];
-                  return _doctorCard(context, doctor);
+              child: StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('doctors')
+                    .where('poli', isEqualTo: poliName)
+                    .where('status', isEqualTo: 'aktif')
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    return const Center(
+                      child: Text("Dokter belum tersedia"),
+                    );
+                  }
+
+                  final doctors = snapshot.data!.docs;
+
+                  return ListView.separated(
+                    itemCount: doctors.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      final doctor =
+                          doctors[index].data() as Map<String, dynamic>;
+                      final doctorId = doctors[index].id;
+
+                      return _doctorCard(context, doctor, doctorId);
+                    },
+                  );
                 },
               ),
             ),
@@ -50,7 +73,8 @@ class DoctorListPage extends StatelessWidget {
     );
   }
 
-  Widget _doctorCard(BuildContext context, Map<String, String> doctor) {
+  Widget _doctorCard(
+      BuildContext context, Map<String, dynamic> doctor, String doctorId) {
     return Material(
       color: Colors.white,
       borderRadius: BorderRadius.circular(14),
@@ -63,9 +87,10 @@ class DoctorListPage extends StatelessWidget {
             context,
             MaterialPageRoute(
               builder: (_) => DoctorDetailPage(
-                name: doctor['name']!,
-                specialist: doctor['specialist']!,
-                image: doctor['image']!,
+                doctorId: doctorId,
+                name: doctor['nama'],
+                specialist: doctor['spesialisasi'],
+                image: doctor['image'],
               ),
             ),
           );
@@ -76,14 +101,14 @@ class DoctorListPage extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: 22,
-                backgroundImage: AssetImage(doctor['image']!),
+                backgroundImage: _buildDoctorImage(doctor['image'] ?? ''),
               ),
               const SizedBox(width: 14),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    doctor['name']!,
+                    doctor['nama'] ?? '-',
                     style: const TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 14,
@@ -91,8 +116,11 @@ class DoctorListPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    doctor['specialist']!,
-                    style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                    doctor['spesialisasi'] ?? '-',
+                    style: TextStyle(
+                      color: Colors.grey.shade600,
+                      fontSize: 12,
+                    ),
                   ),
                 ],
               ),
@@ -102,36 +130,14 @@ class DoctorListPage extends StatelessWidget {
       ),
     );
   }
+
+  ImageProvider _buildDoctorImage(String imagePath) {
+    if (imagePath.isEmpty) {
+      return const AssetImage('assets/images/default.png');
+    }
+    if (imagePath.startsWith('http')) {
+      return NetworkImage(imagePath);
+    }
+    return AssetImage(imagePath);
+  }
 }
-
-// DATA DUMMY DOKTER
-
-final Map<String, List<Map<String, String>>> _dummyDoctors = {
-  'Poli Mata': [
-    {
-      'name': 'Dr. Floyd Miles',
-      'specialist': 'Ophthalmologist',
-      'image': 'assets/images/doctor1.png',
-    },
-    {
-      'name': 'Dr. Guy Hawkins',
-      'specialist': 'Eye Specialist',
-      'image': 'assets/images/doctor2.png',
-    },
-    {
-      'name': 'Dr. Jane Cooper',
-      'specialist': 'Ophthalmologist',
-      'image': 'assets/images/doctor3.png',
-    },
-    {
-      'name': 'Dr. Jacob Jones',
-      'specialist': 'Eye Surgeon',
-      'image': 'assets/images/doctor4.png',
-    },
-    {
-      'name': 'Dr. Savannah Nguyen',
-      'specialist': 'Eye Specialist',
-      'image': 'assets/images/doctor5.png',
-    },
-  ],
-};
