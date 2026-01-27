@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rumahsakitapp/services/auth_service.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -8,8 +9,57 @@ class SignUpPage extends StatefulWidget {
 }
 
 class _SignUpPageState extends State<SignUpPage> {
+  final TextEditingController _namaController = TextEditingController();
+  final TextEditingController _nikController = TextEditingController();
+  final TextEditingController _tanggalLahirController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final AuthService _authService = AuthService();
+
   bool _obscurePassword = true;
   bool _agree = false;
+
+  Future<void> _handleSignUp() async {
+    if (_namaController.text.isEmpty ||
+        _nikController.text.isEmpty ||
+        _tanggalLahirController.text.isEmpty ||
+        _emailController.text.isEmpty ||
+        _passwordController.text.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Semua field harus diisi')));
+      return;
+    }
+
+    try {
+      await _authService.registerPasien(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+        nama: _namaController.text.trim(),
+        nik: _nikController.text.trim(),
+        tanggalLahir: _tanggalLahirController.text.trim(),
+      );
+
+      if (!mounted) return;
+
+      if (!_agree) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Anda harus menyetujui Terms & Policy')),
+        );
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Registrasi Berhasil! Silakan Login.')),
+      );
+
+      Navigator.pop(context); // Kembali ke halaman login
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,6 +97,7 @@ class _SignUpPageState extends State<SignUpPage> {
                 label: 'Full Name',
                 hint: 'Nama lengkap',
                 icon: Icons.person_outline,
+                controller: _namaController,
               ),
 
               _inputField(
@@ -54,20 +105,35 @@ class _SignUpPageState extends State<SignUpPage> {
                 hint: 'Nomor induk kependudukan',
                 icon: Icons.credit_card_outlined,
                 keyboardType: TextInputType.number,
+                controller: _nikController,
               ),
 
               _inputField(
                 label: 'Tanggal Lahir',
                 hint: 'dd/mm/yyyy',
                 icon: Icons.calendar_today_outlined,
+                controller: _tanggalLahirController,
                 readOnly: true,
                 onTap: () async {
-                  await showDatePicker(
+                  // 1. Munculkan kalender
+                  DateTime? pickedDate = await showDatePicker(
                     context: context,
                     initialDate: DateTime(2000),
                     firstDate: DateTime(1950),
                     lastDate: DateTime.now(),
                   );
+
+                  // 2. Jika user memilih tanggal (tidak menekan cancel)
+                  if (pickedDate != null) {
+                    // 3. Format tanggal menjadi String (YYYY-MM-DD)
+                    String formattedDate =
+                        "${pickedDate.year}-${pickedDate.month.toString().padLeft(2, '0')}-${pickedDate.day.toString().padLeft(2, '0')}";
+
+                    // 4. Masukkan ke controller agar tampil di UI
+                    setState(() {
+                      _tanggalLahirController.text = formattedDate;
+                    });
+                  }
                 },
               ),
 
@@ -76,12 +142,14 @@ class _SignUpPageState extends State<SignUpPage> {
                 hint: 'example@email.com',
                 icon: Icons.email_outlined,
                 keyboardType: TextInputType.emailAddress,
+                controller: _emailController,
               ),
 
               _inputField(
                 label: 'Password',
                 hint: '••••••••',
                 icon: Icons.lock_outline,
+                controller: _passwordController,
                 obscureText: _obscurePassword,
                 suffixIcon: IconButton(
                   icon: Icon(
@@ -133,7 +201,7 @@ class _SignUpPageState extends State<SignUpPage> {
                 width: double.infinity,
                 height: 52,
                 child: ElevatedButton(
-                  onPressed: _agree ? () {} : null,
+                  onPressed: _handleSignUp,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF3F6DF6),
                     disabledBackgroundColor: const Color(
@@ -166,6 +234,7 @@ class _SignUpPageState extends State<SignUpPage> {
     required String label,
     required String hint,
     required IconData icon,
+    required TextEditingController controller,
     bool obscureText = false,
     bool readOnly = false,
     TextInputType? keyboardType,

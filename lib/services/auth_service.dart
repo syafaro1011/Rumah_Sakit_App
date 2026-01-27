@@ -11,6 +11,7 @@ class AuthService {
     required String password,
     required String nama,
     required String nik,
+    required String tanggalLahir,
   }) async {
     // A. Buat user di Firebase Auth
     UserCredential res = await _auth.createUserWithEmailAndPassword(
@@ -25,6 +26,7 @@ class AuthService {
       'nama': nama,
       'email': email,
       'nik': nik,
+      'tanggalLahir': tanggalLahir,
       'role': 'pasien', // Kita kunci sebagai pasien
       'createdAt': FieldValue.serverTimestamp(),
     });
