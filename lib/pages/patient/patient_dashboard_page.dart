@@ -1,8 +1,18 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:rumahsakitapp/pages/patient/pilih_poli.dart';
+import 'package:rumahsakitapp/routes/app_routes.dart';
+import 'package:rumahsakitapp/services/dashboard_patient_service.dart';
+import 'package:rumahsakitapp/services/booking_service.dart';
 
-class PatientDashboardPage extends StatelessWidget {
+class PatientDashboardPage extends StatefulWidget {
   const PatientDashboardPage({super.key});
+
+  @override
+  State<PatientDashboardPage> createState() => _PatientDashboardPageState();
+}
+
+class _PatientDashboardPageState extends State<PatientDashboardPage> {
+  final DashboardPatientService _dashboardService = DashboardPatientService();
 
   @override
   Widget build(BuildContext context) {
@@ -25,20 +35,27 @@ class PatientDashboardPage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _header(),
+              FutureBuilder<DocumentSnapshot>(
+                future: _dashboardService.getUserProfile(),
+                builder: (context, snapshot) {
+                  if (snapshot.hasData) {
+                    String nama = snapshot.data!['nama'] ?? 'User';
+                    return _header(nama);
+                  }
+                  return _header("..."); // Loading state
+                },
+              ),
               const SizedBox(height: 20),
               _todayPracticeCard(),
               const SizedBox(height: 24),
+
               _menuCard(
                 icon: Icons.calendar_today_outlined,
                 title: 'Booking Dokter',
                 subtitle: 'Buat jadwal praktik',
                 bgColor: const Color(0xFFEAF1FF),
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const PilihPoliPage()),
-                  );
+                  Navigator.pushNamed(context, AppRoutes.pilihPoli);
                 },
               ),
               _menuCard(
@@ -63,15 +80,15 @@ class PatientDashboardPage extends StatelessWidget {
 
   // ===================== UI COMPONENTS =====================
 
-  Widget _header() {
+  Widget _header(String nama) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
+          children: [
             Text(
-              'Wellcome Back, Rusdi!',
+              'Welcome Back, $nama!',
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
             ),
             SizedBox(height: 6),
