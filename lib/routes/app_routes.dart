@@ -4,7 +4,7 @@ import '../pages/signup_page.dart';
 import '../pages/patient/patient_dashboard_page.dart';
 import '../pages/patient/pilih_poli.dart';
 // import '../pages/doctor/doctor_dashboard_page.dart';
-// import '../pages/admin/admin_dashboard_page.dart';
+import '../pages/admin/admin_dashboard_page.dart';
 
 class AppRoutes {
   static const String login = '/login';
@@ -22,7 +22,7 @@ class AppRoutes {
       patientDashboard: (context) => const PatientDashboardPage(),
       pilihPoli: (context) => const PilihPoliPage(),
       // doctorDashboard: (context) => const DoctorDashboard(),
-      // adminDashboard: (context) => const AdminDashboard(),
+      adminDashboard: (context) => const AdminDashboardPage(),
     };
   }
 }
