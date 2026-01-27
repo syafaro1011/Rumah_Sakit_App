@@ -123,10 +123,12 @@ class _SignUpPageState extends State<SignUpPage> {
                   );
 
                   if (pickedDate != null) {
-                    _tanggalLahirController.text =
-                        "${pickedDate.day.toString().padLeft(2, '0')}/"
-                        "${pickedDate.month.toString().padLeft(2, '0')}/"
-                        "${pickedDate.year}";
+                    setState(() {
+                      _tanggalLahirController.text =
+                          "${pickedDate.day.toString().padLeft(2, '0')}/"
+                          "${pickedDate.month.toString().padLeft(2, '0')}/"
+                          "${pickedDate.year}";
+                    });
                   }
                 },
               ),
