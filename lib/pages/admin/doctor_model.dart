@@ -1,12 +1,15 @@
+import 'package:flutter/material.dart';
+
 class DoctorModel {
   final String id;
-  final String name;
-  final String poli;
-  final String sip;
-  final String email;
-  final String phone;
-  final String schedule;
+  String name;
+  String poli;
+  String sip;
+  String email;
+  String phone;
+  String experience;
   bool isActive;
+  List<DoctorSchedule> schedules;
 
   DoctorModel({
     required this.id,
@@ -15,7 +18,16 @@ class DoctorModel {
     required this.sip,
     required this.email,
     required this.phone,
-    required this.schedule,
-    this.isActive = true,
+    required this.experience,
+    required this.isActive,
+    required this.schedules,
   });
+}
+
+class DoctorSchedule {
+  String day;
+  TimeOfDay start;
+  TimeOfDay end;
+
+  DoctorSchedule({required this.day, required this.start, required this.end});
 }
