@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:rumahsakitapp/services/admin_service.dart';
 import 'package:rumahsakitapp/routes/app_routes.dart';
-import 'manage_doctor_page.dart';
 
 class AdminDashboardPage extends StatefulWidget {
   const AdminDashboardPage({super.key});
@@ -13,7 +12,6 @@ class AdminDashboardPage extends StatefulWidget {
 }
 
 class _AdminDashboardPageState extends State<AdminDashboardPage> {
-  final AdminService _adminService = AdminService();
 
   @override
   Widget build(BuildContext context) {
