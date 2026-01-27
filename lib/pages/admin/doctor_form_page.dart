@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
 import '../../services/admin_service.dart';
 
@@ -13,6 +15,7 @@ class DoctorFormPage extends StatefulWidget {
 
 class _DoctorFormPageState extends State<DoctorFormPage> {
   final _formKey = GlobalKey<FormState>();
+  final picker = ImagePicker();
   final AdminService _adminService = AdminService();
 
   late TextEditingController namaC;
@@ -24,6 +27,9 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
   String? selectedPoli;
 
   bool get isEdit => widget.doctorId != null;
+  String? selectedSpecialist;
+  late List<DoctorSchedule> schedules;
+  File? selectedImage;
 
   final List<String> poliList = [
     'Poli Umum',
@@ -45,7 +51,22 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
     noStrC = TextEditingController(text: d?['no_str']);
     noHpC = TextEditingController(text: d?['no_hp']);
     selectedPoli = d?['poli'];
+
+    if (d?.photoPath != null) {
+      selectedImage = File(d!.photoPath!);
+    }
   }
+
+  // ================= IMAGE =================
+
+  Future<void> _pickImage() async {
+    final picked = await picker.pickImage(source: ImageSource.gallery);
+    if (picked != null) {
+      setState(() => selectedImage = File(picked.path));
+    }
+  }
+
+  // ================= UI =================
 
   @override
   Widget build(BuildContext context) {
@@ -60,6 +81,9 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
           key: _formKey,
           child: ListView(
             children: [
+              _photoPicker(),
+              const SizedBox(height: 20),
+
               _field('Nama Dokter', namaC),
               _dropdown(),
               _field('Email', emailC, enabled: !isEdit),
@@ -158,5 +182,19 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
         SnackBar(content: Text('Gagal menyimpan: $e')),
       );
     }
+    final result = DoctorModel(
+      id: widget.initialDoctor?.id ?? DateTime.now().toString(),
+      name: nameController.text,
+      poli: selectedSpecialist!,
+      sip: sipController.text,
+      email: emailController.text,
+      phone: phoneController.text,
+      experience: experienceController.text,
+      schedules: schedules,
+      isActive: widget.initialDoctor?.isActive ?? true,
+      photoPath: selectedImage?.path,
+    );
+
+    Navigator.pop(context, result);
   }
 }
