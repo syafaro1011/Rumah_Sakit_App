@@ -3,7 +3,33 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AdminService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseFirestore _db = FirebaseFirestore.instance;
+
+  // 1. Mengambil Stream jumlah total dokter
+  Stream<int> getCountByRole(String role) {
+    return _db
+        .collection('users')
+        .where('role', isEqualTo: role)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.length);
+  }
+
+  // 2. Mengambil Stream jumlah praktik/booking hari ini
+  Stream<int> getTodayPraktikCount() {
+    // Asumsi: Anda memiliki koleksi 'bookings'
+    return _db
+        .collection('bookings')
+        .snapshots()
+        .map((snapshot) => snapshot.docs.length);
+  }
+
+  // 3. Mengambil Stream daftar seluruh dokter
+  Stream<QuerySnapshot> getDoctorsStream() {
+    return _db
+        .collection('users')
+        .where('role', isEqualTo: 'dokter')
+        .snapshots();
+  }
 
   // ===============================
   // 1. CREATE DOKTER ACCOUNT
@@ -17,15 +43,12 @@ class AdminService {
     required String noHp,
   }) async {
     try {
-      UserCredential userCredential =
-          await _auth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
+      UserCredential userCredential = await _auth
+          .createUserWithEmailAndPassword(email: email, password: password);
 
       String uid = userCredential.user!.uid;
 
-      await _firestore.collection('doctors').doc(uid).set({
+      await _db.collection('doctors').doc(uid).set({
         'uid': uid,
         'nama': nama,
         'poli': poli,
@@ -49,7 +72,7 @@ class AdminService {
     required Map<String, dynamic> data,
   }) async {
     try {
-      await _firestore.collection('doctors').doc(dokterId).update(data);
+      await _db.collection('doctors').doc(dokterId).update(data);
     } catch (e) {
       rethrow;
     }
@@ -60,7 +83,7 @@ class AdminService {
   // ===============================
   Future<void> deleteDoctor(String dokterId) async {
     try {
-      await _firestore.collection('doctors').doc(dokterId).delete();
+      await _db.collection('doctors').doc(dokterId).delete();
       // NOTE: Firebase Auth user harus dihapus via Cloud Function / Admin SDK
     } catch (e) {
       rethrow;
@@ -71,7 +94,7 @@ class AdminService {
   // 4. GET ALL DOKTER
   // ===============================
   Stream<QuerySnapshot> getAllDoctors() {
-    return _firestore.collection('doctors').snapshots();
+    return _db.collection('doctors').snapshots();
   }
 
   // ===============================
@@ -82,7 +105,7 @@ class AdminService {
     required String deskripsi,
   }) async {
     try {
-      await _firestore.collection('polis').add({
+      await _db.collection('polis').add({
         'nama_poli': namaPoli,
         'deskripsi': deskripsi,
         'created_at': Timestamp.now(),
@@ -100,7 +123,7 @@ class AdminService {
     required Map<String, dynamic> data,
   }) async {
     try {
-      await _firestore.collection('polis').doc(poliId).update(data);
+      await _db.collection('polis').doc(poliId).update(data);
     } catch (e) {
       rethrow;
     }
@@ -111,7 +134,7 @@ class AdminService {
   // ===============================
   Future<void> deletePoli(String poliId) async {
     try {
-      await _firestore.collection('polis').doc(poliId).delete();
+      await _db.collection('polis').doc(poliId).delete();
     } catch (e) {
       rethrow;
     }
@@ -121,7 +144,7 @@ class AdminService {
   // 8. GET ALL POLI
   // ===============================
   Stream<QuerySnapshot> getAllPoli() {
-    return _firestore.collection('polis').snapshots();
+    return _db.collection('polis').snapshots();
   }
 
   // ===============================
@@ -134,11 +157,7 @@ class AdminService {
     required String jamSelesai,
   }) async {
     try {
-      await _firestore
-          .collection('doctors')
-          .doc(dokterId)
-          .collection('jadwal')
-          .add({
+      await _db.collection('doctors').doc(dokterId).collection('jadwal').add({
         'hari': hari,
         'jam_mulai': jamMulai,
         'jam_selesai': jamSelesai,
@@ -158,7 +177,7 @@ class AdminService {
     required Map<String, dynamic> data,
   }) async {
     try {
-      await _firestore
+      await _db
           .collection('doctors')
           .doc(dokterId)
           .collection('jadwal')
@@ -177,7 +196,7 @@ class AdminService {
     required String jadwalId,
   }) async {
     try {
-      await _firestore
+      await _db
           .collection('doctors')
           .doc(dokterId)
           .collection('jadwal')
@@ -192,7 +211,7 @@ class AdminService {
   // 12. GET JADWAL DOKTER
   // ===============================
   Stream<QuerySnapshot> getJadwalDokter(String dokterId) {
-    return _firestore
+    return _db
         .collection('doctors')
         .doc(dokterId)
         .collection('jadwal')
@@ -207,9 +226,7 @@ class AdminService {
     required String status, // aktif / nonaktif
   }) async {
     try {
-      await _firestore.collection('doctors').doc(dokterId).update({
-        'status': status,
-      });
+      await _db.collection('doctors').doc(dokterId).update({'status': status});
     } catch (e) {
       rethrow;
     }

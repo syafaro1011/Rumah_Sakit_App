@@ -5,14 +5,16 @@ import '../pages/patient/patient_dashboard_page.dart';
 import '../pages/patient/pilih_poli.dart';
 // import '../pages/doctor/doctor_dashboard_page.dart';
 import '../pages/admin/admin_dashboard_page.dart';
+import '../pages/admin/manage_doctor_page.dart';
 
 class AppRoutes {
   static const String login = '/login';
   static const String signup = '/signup';
   static const String patientDashboard = '/patient/patient-dashboard';
   static const String pilihPoli = '/patient/pilih-poli';
-  static const String doctorDashboard = '/doctor/doctor_dashboard';
-  static const String adminDashboard = '/admin/admin_dashboard';
+  static const String doctorDashboard = '/doctor/doctor-dashboard';
+  static const String adminDashboard = '/admin/admin-dashboard';
+  static const String manageDoctor = '/admin/manage-doctor-page';
 
   // Map yang berisi daftar rute
   static Map<String, WidgetBuilder> getRoutes() {
@@ -23,6 +25,7 @@ class AppRoutes {
       pilihPoli: (context) => const PilihPoliPage(),
       // doctorDashboard: (context) => const DoctorDashboard(),
       adminDashboard: (context) => const AdminDashboardPage(),
+      manageDoctor: (context) => const ManageDoctorPage(),
     };
   }
 }
