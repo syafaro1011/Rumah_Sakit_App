@@ -228,6 +228,7 @@ class _SignUpPageState extends State<SignUpPage> {
     required String label,
     required String hint,
     required IconData icon,
+    required TextEditingController controller,
     bool obscureText = false,
     bool readOnly = false,
     TextInputType? keyboardType,
