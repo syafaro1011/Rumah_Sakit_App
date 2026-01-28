@@ -1,5 +1,7 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../../model/doctor_model.dart';
+import '../../services/admin_service.dart';
 import 'doctor_form_page.dart';
 
 class ManageDoctorPage extends StatefulWidget {
@@ -10,31 +12,31 @@ class ManageDoctorPage extends StatefulWidget {
 }
 
 class _ManageDoctorPageState extends State<ManageDoctorPage> {
-  final List<DoctorModel> doctors = [
-    DoctorModel(
-      id: '1',
-      nama: 'Dr. FUFUFAFA',
-      poli: 'Poli Gigi',
-      sip: '1232141234',
-      email: 'fufufafa@example.com',
-      password: 'password123',
-      phone: '0821321324215',
-      experience: '10 Tahun',
-      isActive: true,
-      schedules: [
-        DoctorSchedule(
-          day: 'Senin',
-          start: const TimeOfDay(hour: 8, minute: 0),
-          end: const TimeOfDay(hour: 13, minute: 0),
-        ),
-        DoctorSchedule(
-          day: 'Kamis',
-          start: const TimeOfDay(hour: 15, minute: 0),
-          end: const TimeOfDay(hour: 20, minute: 0),
-        ),
-      ],
-    ),
-  ];
+  final AdminService _adminService = AdminService();
+  String _searchQuery = '';
+
+  void _confirmDelete(DoctorModel doctor) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Hapus Dokter?'),
+        content: Text('Data ${doctor.nama} akan dihapus permanen.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () async {
+              await _adminService.deleteDoctor(doctor.id);
+              if (mounted) Navigator.pop(context);
+            },
+            child: const Text('Hapus', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -45,10 +47,51 @@ class _ManageDoctorPageState extends State<ManageDoctorPage> {
         children: [
           _searchBar(),
           Expanded(
-            child: ListView.builder(
-              itemCount: doctors.length,
-              itemBuilder: (context, index) {
-                return _doctorCard(doctors[index]);
+            child: StreamBuilder<QuerySnapshot>(
+              stream: _adminService.getAllDoctors(), // Mengambil data real-time
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return const Center(child: Text('Belum ada data dokter'));
+                }
+
+                // Konversi QuerySnapshot menjadi List<DoctorModel>
+                final docs = snapshot.data!.docs;
+
+                // Filter pencarian sederhana
+                final filteredDocs = docs.where((doc) {
+                  final nama = doc['nama'].toString().toLowerCase();
+                  return nama.contains(_searchQuery.toLowerCase());
+                }).toList();
+
+                return ListView.builder(
+                  itemCount: filteredDocs.length,
+                  itemBuilder: (context, index) {
+                    final data =
+                        filteredDocs[index].data() as Map<String, dynamic>;
+
+                    // Buat model dari data Firestore
+                    final doctor = DoctorModel(
+                      id: filteredDocs[index].id,
+                      nama: data['nama'] ?? '',
+                      poli: data['poli'] ?? '',
+                      sip: data['no_SIP'] ?? '',
+                      email: data['email'] ?? '',
+                      password:
+                          '', // Password tidak ditarik dari Firestore demi keamanan
+                      phone: data['no_hp'] ?? '',
+                      experience: data['experience'] ?? '',
+                      isActive: data['status'] == 'aktif',
+                      photoUrl: data['photoUrl'],
+                      schedules: [], // Jadwal biasanya ada di sub-collection
+                    );
+
+                    return _doctorCard(doctor);
+                  },
+                );
               },
             ),
           ),
@@ -64,7 +107,6 @@ class _ManageDoctorPageState extends State<ManageDoctorPage> {
       elevation: 0,
       backgroundColor: Colors.white,
       foregroundColor: Colors.black,
-      leading: const BackButton(),
       title: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -77,15 +119,11 @@ class _ManageDoctorPageState extends State<ManageDoctorPage> {
       ),
       actions: [
         IconButton(
-          onPressed: () async {
-            final result = await Navigator.push(
+          onPressed: () {
+            Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const DoctorFormPage()),
             );
-
-            if (result != null) {
-              setState(() => doctors.add(result));
-            }
           },
           icon: Container(
             padding: const EdgeInsets.all(8),
@@ -114,8 +152,9 @@ class _ManageDoctorPageState extends State<ManageDoctorPage> {
           BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10),
         ],
       ),
-      child: const TextField(
-        decoration: InputDecoration(
+      child: TextField(
+        onChanged: (value) => setState(() => _searchQuery = value),
+        decoration: const InputDecoration(
           icon: Icon(Icons.search),
           hintText: 'cari dokter',
           border: InputBorder.none,
@@ -144,66 +183,65 @@ class _ManageDoctorPageState extends State<ManageDoctorPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          /// HEADER
           Row(
             children: [
+              CircleAvatar(
+                backgroundColor: Colors.blue.shade50,
+                backgroundImage: doctor.photoUrl != null
+                    ? NetworkImage(doctor.photoUrl!)
+                    : null,
+                child: doctor.photoUrl == null
+                    ? const Icon(Icons.person)
+                    : null,
+              ),
+              const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  doctor.nama,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      doctor.nama,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                      ),
+                    ),
+                    Text(
+                      doctor.poli,
+                      style: TextStyle(color: Colors.grey.shade600),
+                    ),
+                  ],
                 ),
               ),
               Switch(
                 value: doctor.isActive,
-                activeThumbColor: Colors.green,
+                activeColor: Colors.green,
                 onChanged: (value) {
-                  setState(() => doctor.isActive = value);
+                  _adminService.updateStatusDokter(
+                    dokterId: doctor.id,
+                    status: value ? 'aktif' : 'nonaktif',
+                  );
                 },
               ),
             ],
           ),
-          Text(doctor.poli, style: TextStyle(color: Colors.grey.shade600)),
-          const SizedBox(height: 4),
-          Text(
-            'SIP - ${doctor.sip}',
-            style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
-          ),
-
           const Divider(height: 28),
-
-          _infoRow(Icons.email_outlined, 'Email', doctor.email),
-          _infoRow(Icons.phone_outlined, 'No. Telpon', doctor.phone),
-          _infoRow(
-            Icons.calendar_today_outlined,
-            'Jadwal Praktik',
-            _formatSchedule(doctor.schedules),
-          ),
-
+          _infoRow(Icons.person_outline, 'Nama', doctor.nama),
+          _infoRow(Icons.phone_outlined, 'SIP', doctor.sip),
+          _infoRow(Icons.medical_services_outlined, 'Spesialis', doctor.poli),
           const SizedBox(height: 14),
-
-          /// ACTION
           Row(
             children: [
               _iconButton(
                 icon: Icons.edit_outlined,
                 color: Colors.grey.shade200,
-                onTap: () async {
-                  final result = await Navigator.push(
+                onTap: () {
+                  Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (_) => DoctorFormPage(initialDoctor: doctor),
                     ),
                   );
-
-                  if (result != null) {
-                    setState(() {
-                      final index = doctors.indexOf(doctor);
-                      doctors[index] = result;
-                    });
-                  }
                 },
               ),
               const SizedBox(width: 10),
@@ -211,7 +249,7 @@ class _ManageDoctorPageState extends State<ManageDoctorPage> {
                 icon: Icons.delete_outline,
                 color: Colors.red.shade100,
                 iconColor: Colors.red,
-                onTap: () => _deleteDoctor(doctor),
+                onTap: () => _confirmDelete(doctor),
               ),
               const Spacer(),
               _statusBadge(doctor.isActive),
@@ -222,39 +260,23 @@ class _ManageDoctorPageState extends State<ManageDoctorPage> {
     );
   }
 
-  // ================= HELPERS =================
+
 
   Widget _infoRow(IconData icon, String title, String value) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, size: 18, color: Colors.grey),
           const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-                Text(value),
-              ],
-            ),
+          Text(
+            "$title: ",
+            style: const TextStyle(fontSize: 12, color: Colors.grey),
           ),
+          Text(value, style: const TextStyle(fontSize: 12)),
         ],
       ),
     );
-  }
-
-  String _formatSchedule(List<DoctorSchedule> schedules) {
-    return schedules
-        .map((s) {
-          return '${s.day}: ${s.start.format(context)} - ${s.end.format(context)}';
-        })
-        .join('\n');
   }
 
   Widget _iconButton({
@@ -272,7 +294,7 @@ class _ManageDoctorPageState extends State<ManageDoctorPage> {
           color: color,
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Icon(icon, color: iconColor),
+        child: Icon(icon, color: iconColor, size: 20),
       ),
     );
   }
@@ -293,9 +315,5 @@ class _ManageDoctorPageState extends State<ManageDoctorPage> {
         ),
       ),
     );
-  }
-
-  void _deleteDoctor(DoctorModel doctor) {
-    setState(() => doctors.remove(doctor));
   }
 }

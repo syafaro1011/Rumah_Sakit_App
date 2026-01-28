@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '/model/doctor_model.dart';
 import 'package:rumahsakitapp/services/admin_service.dart';
 
@@ -13,62 +15,79 @@ class DoctorFormPage extends StatefulWidget {
 
 class _DoctorFormPageState extends State<DoctorFormPage> {
 
+  File? _imageFile; // Untuk menampung file foto yang dipilih
+  final ImagePicker _picker = ImagePicker();
+
   void _submit() async {
-  if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) return;
 
-  // Tampilkan loading
-  showDialog(
-    context: context,
-    barrierDismissible: false,
-    builder: (context) => const Center(child: CircularProgressIndicator()),
-  );
+    // Tampilkan loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
 
-  try {
-    final adminService = AdminService();
+    try {
+      final adminService = AdminService();
 
-    if (isEdit) {
-      // Logika Update
-      await adminService.updateDoctor(widget.initialDoctor!.id, {
-        'nama': nameController.text,
-        'poli': selectedSpecialist,
-        'experience': experienceController.text,
-        'no_hp': phoneController.text,
-        'no_str': sipController.text,
-      });
-      // Catatan: Jika ingin update jadwal, Anda perlu looping update sub-collection jadwal
-    } else {
-      // Logika Create Baru
-      await adminService.createDoctor(
-        nama: nameController.text,
-        poli: selectedSpecialist!,
-        email: emailController.text,
-        password: passwordController.text,
-        noStr: sipController.text,
-        noHp: phoneController.text,
-      );
+      if (isEdit) {
+        // Update data dasar
+        await adminService.updateDoctor(widget.initialDoctor!.id, {
+          'nama': nameController.text,
+          'poli': selectedSpecialist,
+          'experience': experienceController.text,
+          'no_hp': phoneController.text,
+          'no_SIP': sipController.text,
+        });
+        // Catatan: Update jadwal memerlukan logika tambahan (hapus jadwal lama, tulis baru)
+      } else {
+        // Buat objek model baru
+        final newDoctor = DoctorModel(
+          id: '', // ID akan diisi dari Auth UID di service
+          nama: nameController.text,
+          poli: selectedSpecialist!,
+          sip: sipController.text,
+          email: emailController.text,
+          password: passwordController.text,
+          phone: phoneController.text,
+          experience: experienceController.text,
+          isActive: true,
+          schedules: schedules, // Menggunakan list schedules dari state
+        );
 
-      // Simpan Jadwal (Sub-collection)
-      // Kita perlu ID dokter yang baru dibuat. 
-      // Karena createDoctor di admin_service belum return ID, 
-      // sebaiknya admin_service diperbaiki atau jadwal dikirim saat create.
-    }
+        await adminService.createDoctor(newDoctor, _imageFile);
+      }
 
-    if (mounted) {
-      Navigator.pop(context); // Tutup Loading
-      Navigator.pop(context, true); // Kembali ke halaman daftar dengan sukses
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(isEdit ? 'Berhasil diperbarui' : 'Berhasil ditambah')),
-      );
-    }
-  } catch (e) {
-    if (mounted) {
-      Navigator.pop(context); // Tutup Loading
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal: ${e.toString()}')),
-      );
+      if (mounted) {
+        Navigator.pop(context); // Tutup Loading
+        Navigator.pop(context, true); // Balik ke list
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(isEdit ? 'Berhasil diperbarui' : 'Berhasil ditambah'),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context); // Tutup Loading
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Gagal: ${e.toString()}')));
+      }
     }
   }
-}
+
+  // Fungsi untuk mengambil foto
+  Future<void> _pickImage() async {
+    final XFile? selected = await _picker.pickImage(
+      source: ImageSource.gallery, // Bisa diganti ImageSource.camera
+      imageQuality: 50, // Kompres agar upload lebih cepat
+    );
+    if (selected != null) {
+      setState(() => _imageFile = File(selected.path));
+    }
+  }
 
   final _formKey = GlobalKey<FormState>();
   late TextEditingController nameController;
@@ -142,6 +161,7 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
               _field('Password *', passwordController),
               _field('SIP *', sipController),
               _field('Nomor Telepon *', phoneController),
+              _imagePickerWidget(),
 
               const SizedBox(height: 24),
               _scheduleHeader(),
@@ -276,6 +296,34 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
         child: Text(
           isEdit ? 'Simpan Perubahan' : 'Tambah Dokter',
           style: const TextStyle(fontSize: 16),
+        ),
+      ),
+    );
+  }
+
+  Widget _imagePickerWidget() {
+    return Center(
+      child: GestureDetector(
+        onTap: _pickImage,
+        child: Container(
+          width: 100,
+          height: 100,
+          margin: const EdgeInsets.only(bottom: 20),
+          decoration: BoxDecoration(
+            color: Colors.grey[200],
+            shape: BoxShape.circle,
+            border: Border.all(color: const Color(0xFF3F6DF6), width: 2),
+            image: _imageFile != null
+                ? DecorationImage(image: FileImage(_imageFile!), fit: BoxFit.cover)
+                : (widget.initialDoctor?.photoUrl != null
+                    ? DecorationImage(
+                        image: NetworkImage(widget.initialDoctor!.photoUrl!),
+                        fit: BoxFit.cover)
+                    : null),
+          ),
+          child: _imageFile == null && widget.initialDoctor?.photoUrl == null
+              ? const Icon(Icons.camera_alt, size: 40, color: Color(0xFF3F6DF6))
+              : null,
         ),
       ),
     );

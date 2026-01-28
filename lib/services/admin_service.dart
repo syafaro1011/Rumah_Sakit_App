@@ -1,9 +1,15 @@
+import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:rumahsakitapp/model/doctor_model.dart';
 
 class AdminService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final FirebaseStorage _storage = FirebaseStorage.instance;
 
   // 1. Mengambil Stream jumlah total dokter
   Stream<int> getCountByRole(String role) {
@@ -34,58 +40,81 @@ class AdminService {
   // ===============================
   // 1. CREATE DOKTER ACCOUNT
   // ===============================
-  Future<void> createDoctor({
-    required String nama,
-    required String poli,
-    required String email,
-    required String password,
-    required String noStr,
-    required String noHp,
-    List<Map<String, dynamic>>? jadwal, // Tambahan parameter optional
-  }) async {
+
+  //Upload Foto Dokter ke Firebase Storage
+  Future<String?> uploadDoctorPhoto(String uid, File file) async {
     try {
-      UserCredential userCredential = await _auth
-          .createUserWithEmailAndPassword(email: email, password: password);
+      // Simpan di folder doctors/UID_DOKTER.jpg
+      Reference ref = _storage.ref().child('doctors').child('$uid.jpg');
+      UploadTask uploadTask = ref.putFile(file);
+      TaskSnapshot snapshot = await uploadTask;
+      return await snapshot.ref
+          .getDownloadURL(); // Ambil URL untuk disimpan di Firestore
+    } catch (e) {
+      return null;
+    }
+  }
 
-      String uid = userCredential.user!.uid;
+  // Create Dokter menggunakan Object Model
+  Future<void> createDoctor(DoctorModel doctor, File? imageFile) async {
+    // 1. Buat instance Firebase sementara agar admin tidak ter-logout
+    // FirebaseApp secondaryApp = await Firebase.initializeApp(
+    //   name: 'SecondaryApp',
+    //   options: Firebase.app().options,
+    // );
 
-      // Simpan ke collection Users (untuk login)
+    // FirebaseAuth secondaryAuth = FirebaseAuth.instanceFor(app: secondaryApp);
+
+    try {
+      // 2. Buat akun dokter di instance sekunder
+      UserCredential res = await _auth.createUserWithEmailAndPassword(
+        email: doctor.email,
+        password: doctor.password,
+      );
+
+      String uid = res.user!.uid;
+      String? finalUrl;
+
+      if (imageFile != null) {
+        finalUrl = await uploadDoctorPhoto(uid, imageFile);
+      }
+
+      // Update doctor object dengan URL foto
+      doctor.photoUrl = finalUrl;
+
+      // Simpan ke Firestore
+      await _db.collection('doctors').doc(uid).set(doctor.toMap());
+
+      // 3. Simpan data ke Firestore (Tetap pakai instance utama)
       await _db.collection('users').doc(uid).set({
         'uid': uid,
-        'nama': nama,
-        'email': email,
+        'nama': doctor.nama,
+        'email': doctor.email,
         'role': 'dokter',
-        'created_at': Timestamp.now(),
       });
 
-      // Simpan ke collection Doctors (profil lengkap)
-      await _db.collection('doctors').doc(uid).set({
-        'uid': uid,
-        'nama': nama,
-        'poli': poli,
-        'email': email,
-        'no_str': noStr,
-        'no_hp': noHp,
-        'status': 'aktif',
-        'created_at': Timestamp.now(),
-      });
+      await _db.collection('doctors').doc(uid).set(doctor.toMap());
 
-      // Jika ada jadwal awal, masukkan ke sub-collection
-      if (jadwal != null) {
-        for (var j in jadwal) {
-          await _db.collection('doctors').doc(uid).collection('jadwal').add(j);
-        }
-      }
+      // for (var s in doctor.schedules) {
+      //   await _db
+      //       .collection('doctors')
+      //       .doc(uid)
+      //       .collection('jadwal')
+      //       .add(s.toMap());
+      // }
+
+      // // 4. Logout akun baru dari instance sekunder dan hapus instance-nya
+      // await secondaryAuth.signOut();
+      // await secondaryApp.delete();
     } catch (e) {
+      // await secondaryApp.delete();
       rethrow;
     }
   }
 
-  // ===============================
-  // 2. UPDATE DATA DOKTER
-  // ===============================
-  Future<void> updateDoctor(String doctorId, Map<String, dynamic> data) async {
-    await _db.collection('doctors').doc(doctorId).update(data);
+  // Update Dokter
+  Future<void> updateDoctor(String id, Map<String, dynamic> data) async {
+    await _db.collection('doctors').doc(id).update(data);
   }
 
   // ===============================
@@ -100,56 +129,6 @@ class AdminService {
   // ===============================
   Stream<QuerySnapshot> getAllDoctors() {
     return _db.collection('doctors').snapshots();
-  }
-
-  // ===============================
-  // 5. CREATE POLI
-  // ===============================
-  Future<void> createPoli({
-    required String namaPoli,
-    required String deskripsi,
-  }) async {
-    try {
-      await _db.collection('polis').add({
-        'nama_poli': namaPoli,
-        'deskripsi': deskripsi,
-        'created_at': Timestamp.now(),
-      });
-    } catch (e) {
-      rethrow;
-    }
-  }
-
-  // ===============================
-  // 6. UPDATE POLI
-  // ===============================
-  Future<void> updatePoli({
-    required String poliId,
-    required Map<String, dynamic> data,
-  }) async {
-    try {
-      await _db.collection('polis').doc(poliId).update(data);
-    } catch (e) {
-      rethrow;
-    }
-  }
-
-  // ===============================
-  // 7. DELETE POLI
-  // ===============================
-  Future<void> deletePoli(String poliId) async {
-    try {
-      await _db.collection('polis').doc(poliId).delete();
-    } catch (e) {
-      rethrow;
-    }
-  }
-
-  // ===============================
-  // 8. GET ALL POLI
-  // ===============================
-  Stream<QuerySnapshot> getAllPoli() {
-    return _db.collection('polis').snapshots();
   }
 
   // ===============================
