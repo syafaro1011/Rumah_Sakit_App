@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // Tambahkan ini
 import 'package:rumahsakitapp/model/doctor_model.dart';
+import 'package:rumahsakitapp/services/admin_service.dart'; // Tambahkan ini
 
 class DoctorProfilePage extends StatelessWidget {
   final DoctorModel doctor;
@@ -39,7 +41,6 @@ class DoctorProfilePage extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // MENAMPILKAN FOTO DOKTER
           CircleAvatar(
             radius: 40,
             backgroundColor: const Color(0xFFEAF1FF),
@@ -57,10 +58,7 @@ class DoctorProfilePage extends StatelessWidget {
               children: [
                 Text(
                   doctor.nama,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -114,17 +112,42 @@ class DoctorProfilePage extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           
-          // MENAMPILKAN LIST JADWAL
-          doctor.schedules.isEmpty 
-          ? const Text('Belum ada jadwal praktik')
-          : Column(
-              children: doctor.schedules.map((s) => _scheduleItem(context, s)).toList(),
-            ),
+          // UPDATE: MENGGUNAKAN STREAMBUILDER UNTUK SUB-COLLECTION
+          StreamBuilder<QuerySnapshot>(
+            stream: AdminService().getJadwalDokter(doctor.id),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(8.0),
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                );
+              }
+
+              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                return const Text(
+                  'Belum ada jadwal praktik',
+                  style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic),
+                );
+              }
+
+              return Column(
+                children: snapshot.data!.docs.map((doc) {
+                  final data = doc.data() as Map<String, dynamic>;
+                  // Pastikan DoctorSchedule memiliki factory fromMap yang benar
+                  final s = DoctorSchedule.fromMap(data);
+                  return _scheduleItem(context, s);
+                }).toList(),
+              );
+            },
+          ),
         ],
       ),
     );
   }
 
+  // ... (Widget _infoRow, _scheduleItem, dan _statusBadge tetap sama)
   Widget _infoRow(IconData icon, String label, String value) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
@@ -159,7 +182,7 @@ class DoctorProfilePage extends StatelessWidget {
           Text(s.day, style: const TextStyle(fontWeight: FontWeight.bold)),
           Text(
             '${s.start.format(context)} - ${s.end.format(context)}',
-            style: const TextStyle(color: Colors.blue),
+            style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.w600),
           ),
         ],
       ),

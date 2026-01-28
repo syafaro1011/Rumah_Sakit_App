@@ -57,40 +57,65 @@ class AdminService {
 
   // Create Dokter menggunakan Object Model
   Future<void> createDoctor(DoctorModel doctor, File? imageFile) async {
-  try {
-    // 1. Buat akun Auth
-    UserCredential res = await _auth.createUserWithEmailAndPassword(
-      email: doctor.email,
-      password: doctor.password,
-    );
+    try {
+      // 1. Buat akun Auth (Email & Password)
+      UserCredential res = await _auth.createUserWithEmailAndPassword(
+        email: doctor.email,
+        password: doctor.password,
+      );
 
-    String uid = res.user!.uid;
-    
-    // 2. Upload Foto jika ada
-    if (imageFile != null) {
-      doctor.photoUrl = await uploadDoctorPhoto(uid, imageFile);
+      String uid = res.user!.uid;
+
+      // 2. Upload Foto jika ada
+      if (imageFile != null) {
+        doctor.photoUrl = await uploadDoctorPhoto(uid, imageFile);
+      }
+
+      // 3. Simpan data user ke koleksi 'users' (Identitas Login)
+      await _db.collection('users').doc(uid).set({
+        'uid': uid,
+        'nama': doctor.nama,
+        'email': doctor.email,
+        'role': 'dokter',
+      });
+
+      // 4. Simpan data dokter ke koleksi 'doctors' (Profil Utama)
+      // Kita panggil toMap() tapi jadwal disimpan terpisah di bawah
+      await _db.collection('doctors').doc(uid).set(doctor.toMap());
+
+      // 5. SIMPAN JADWAL KE SUB-COLLECTION 'jadwal'
+      // Ini bagian penting agar jadwal tersimpan di folder 'jadwal' milik dokter tersebut
+      if (doctor.schedules.isNotEmpty) {
+        final batch = _db
+            .batch(); // Menggunakan Batch agar lebih efisien dan cepat
+        for (var s in doctor.schedules) {
+          var scheduleRef = _db
+              .collection('doctors')
+              .doc(uid)
+              .collection('jadwal')
+              .doc(); // Generate ID otomatis
+
+          batch.set(scheduleRef, s.toMap());
+        }
+        await batch.commit(); // Simpan semua jadwal sekaligus
+      }
+    } catch (e) {
+      rethrow;
     }
-
-    // 3. Simpan data user (untuk login)
-    await _db.collection('users').doc(uid).set({
-      'uid': uid,
-      'nama': doctor.nama,
-      'email': doctor.email,
-      'role': 'dokter',
-    });
-
-    // 4. Simpan data dokter ke koleksi 'doctors'
-    // schedules akan otomatis tersimpan sebagai array jika toMap sudah benar
-    await _db.collection('doctors').doc(uid).set(doctor.toMap());
-
-  } catch (e) {
-    rethrow;
   }
-}
 
   // Update Dokter
   Future<void> updateDoctor(String id, Map<String, dynamic> data) async {
     await _db.collection('doctors').doc(id).update(data);
+  }
+
+  // Menghapus semua jadwal sebelum menulis yang baru saat Edit
+  Future<void> deleteAllJadwal(String dokterId) async {
+    final collection = _db.collection('doctors').doc(dokterId).collection('jadwal');
+    final snapshots = await collection.get();
+    for (var doc in snapshots.docs) {
+      await doc.reference.delete();
+    }
   }
 
   // ===============================
