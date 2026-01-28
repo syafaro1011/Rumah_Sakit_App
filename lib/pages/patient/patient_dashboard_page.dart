@@ -62,6 +62,9 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
                 title: 'Antrian',
                 subtitle: 'Lihat Antrian Online',
                 bgColor: const Color(0xFFFFF4DB),
+                onTap: () {
+                  Navigator.pushNamed(context, AppRoutes.queueInfo);
+                },
               ),
               _menuCard(
                 icon: Icons.description_outlined,
