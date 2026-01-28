@@ -6,7 +6,7 @@ import 'package:rumahsakitapp/services/admin_service.dart';
 import 'package:rumahsakitapp/routes/app_routes.dart';
 import 'admin_profile_page.dart'; 
 import 'manage_doctor_page.dart';
-import 'security_page.dart'; // Pastikan file ini sudah dibuat
+import 'security_page.dart';
 
 class AdminDashboardPage extends StatefulWidget {
   const AdminDashboardPage({super.key});
@@ -17,17 +17,37 @@ class AdminDashboardPage extends StatefulWidget {
 
 class _AdminDashboardPageState extends State<AdminDashboardPage> {
   final AdminService _adminService = AdminService();
+  String _searchQuery = '';
+  int _currentIndex = 0; // Tambahkan ini untuk mengontrol BottomNav
 
-  String _searchQuery = ''; // Tambahkan state untuk pencarian
+  // Fungsi untuk menampilkan BottomSheet "Tentang"
+  void _showAboutSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Tentang Aplikasi', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            const Text('Sistem Manajemen Rumah Sakit v1.0.0', textAlign: TextAlign.center),
+            const SizedBox(height: 20),
+            ElevatedButton(onPressed: () => Navigator.pop(context), child: const Text('Tutup')),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    // List halaman yang dikontrol oleh BottomNav
+    // Definisi list halaman
     final List<Widget> pages = [
       _mainDashboardContent(context), 
       const ManageDoctorPage(),       
       AdminProfilePage(
-        // Kita kirimkan fungsi klik dari sini (Poin 2)
         onSecurityTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const SecurityPage())),
         onAboutTap: () => _showAboutSheet(context),
       ),       
@@ -35,60 +55,66 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _header(),
-              const SizedBox(height: 20),
-              _statSection(),
-              const SizedBox(height: 24),
-              _kelolaDokterCard(context),
-              const SizedBox(height: 20),
-              _searchField(),
-              const SizedBox(height: 16),
-              // Gunakan Expanded agar list tidak overflow
-              Expanded(child: _doctorList()),
-            ],
-          ),
-        ),
-      ),
+      // Mengganti body berdasarkan index BottomNav
+      body: pages[_currentIndex], 
       bottomNavigationBar: _bottomNav(),
     );
   }
 
+  // Pindahkan konten dashboard utama ke widget terpisah agar rapi
+  Widget _mainDashboardContent(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _header(),
+            const SizedBox(height: 20),
+            _statSection(),
+            const SizedBox(height: 24),
+            _kelolaDokterCard(context),
+            const SizedBox(height: 20),
+            _searchField(),
+            const SizedBox(height: 16),
+            const Text("Daftar Dokter", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            const SizedBox(height: 8),
+            Expanded(child: _doctorList()),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _header() {
-    return Column(
+    return const Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: const [
+      children: [
         Text(
-          'ADMIN',
+          'ADMIN DASHBOARD',
           style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 1.2),
         ),
         SizedBox(height: 4),
-        Text('Atur Dokter dan Jadwal', style: TextStyle(color: Colors.grey)),
+        Text('Pantau performa rumah sakit hari ini', style: TextStyle(color: Colors.grey)),
       ],
     );
   }
 
   Widget _statSection() {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         StreamBuilder<int>(
           stream: _adminService.getDoctorsCount(),
           builder: (context, snapshot) => _StatCard(
             title: 'Total Dokter',
-            value: snapshot.data?.toString() ?? '0', // Tambahkan null-safety
+            value: snapshot.data?.toString() ?? '0',
             color: Colors.blue,
           ),
         ),
         StreamBuilder<int>(
           stream: _adminService.getTodayPraktikCount(),
           builder: (context, snapshot) => _StatCard(
-            title: 'Praktik Hari Ini',
+            title: 'Praktik Kini',
             value: snapshot.data?.toString() ?? '0',
             color: Colors.green,
           ),
@@ -96,7 +122,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
         StreamBuilder<int>(
           stream: _adminService.getCountByRole('pasien'),
           builder: (context, snapshot) => _StatCard(
-            title: 'Total Pasien',
+            title: 'Pasien',
             value: snapshot.data?.toString() ?? '0',
             color: Colors.red,
           ),
@@ -109,11 +135,11 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     return TextField(
       onChanged: (value) => setState(() => _searchQuery = value),
       decoration: InputDecoration(
-        hintText: 'Cari Dokter..',
+        hintText: 'Cari dokter spesialis atau nama..',
         prefixIcon: const Icon(Icons.search),
         filled: true,
         fillColor: Colors.grey.shade100,
-        contentPadding: const EdgeInsets.symmetric(vertical: 0),
+        contentPadding: EdgeInsets.zero,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(30),
           borderSide: BorderSide.none,
@@ -130,13 +156,14 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
           return const Center(child: CircularProgressIndicator());
         }
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return const Center(child: Text("Belum ada data dokter"));
+          return const Center(child: Text("Data tidak ditemukan"));
         }
 
-        // Filter pencarian
         final docs = snapshot.data!.docs.where((doc) {
-          final name = (doc.data() as Map<String, dynamic>)['nama']?.toString().toLowerCase() ?? '';
-          return name.contains(_searchQuery.toLowerCase());
+          final data = doc.data() as Map<String, dynamic>;
+          final name = data['nama']?.toString().toLowerCase() ?? '';
+          final poli = data['poli']?.toString().toLowerCase() ?? '';
+          return name.contains(_searchQuery.toLowerCase()) || poli.contains(_searchQuery.toLowerCase());
         }).toList();
 
         return ListView.separated(
@@ -144,45 +171,28 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
           separatorBuilder: (_, __) => const SizedBox(height: 12),
           itemBuilder: (context, index) {
             var data = docs[index].data() as Map<String, dynamic>;
-            
-            // Ambil data dengan aman (mencegah error bad state)
-            String nama = data['nama'] ?? 'Tanpa Nama';
+            String nama = data['nama'] ?? 'Dokter';
             String poli = data['poli'] ?? 'Umum';
             String? photoUrl = data['photoUrl'];
 
-            return Material(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              elevation: 1,
+            return Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+              ),
               child: ListTile(
                 leading: CircleAvatar(
                   backgroundColor: const Color(0xFFEAF1FF),
-                  backgroundImage: photoUrl != null ? NetworkImage(photoUrl) : null,
-                  child: photoUrl == null ? const Icon(Icons.person, color: Colors.blue) : null,
+                  backgroundImage: photoUrl != null && photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
+                  child: photoUrl == null || photoUrl.isEmpty ? const Icon(Icons.person, color: Colors.blue) : null,
                 ),
                 title: Text(nama, style: const TextStyle(fontWeight: FontWeight.w600)),
-                subtitle: Text(poli),
-                trailing: const Icon(Icons.chevron_right, size: 20),
+                subtitle: Text(poli, style: const TextStyle(fontSize: 12)),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 14),
                 onTap: () {
-                  final doctor = DoctorModel(
-                    id: docs[index].id,
-                    nama: nama,
-                    poli: poli,
-                    sip: data['no_SIP'] ?? '',
-                    email: data['email'] ?? '',
-                    password: '', // Password tidak diambil dari Firestore
-                    phone: data['no_hp'] ?? '',
-                    experience: data['experience'] ?? '',
-                    isActive: (data['status'] ?? 'nonaktif') == 'aktif',
-                    schedules: [], // Jadwal bisa diambil di halaman profil jika diperlukan
-                    photoUrl: photoUrl,
-                  );
-                  // Navigasi ke halaman profil dokter (DoctorProfilePage)
-                  Navigator.pushNamed(
-                    context,
-                    AppRoutes.doctorProfile,
-                    arguments: doctor, // 'doctor' di sini adalah objek DoctorModel
-  );
+                  final doctor = DoctorModel.fromMap(data, docs[index].id);
+                  Navigator.pushNamed(context, AppRoutes.doctorProfile, arguments: doctor);
                 },
               ),
             );
@@ -191,9 +201,24 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
       },
     );
   }
+
+  Widget _bottomNav() {
+    return BottomNavigationBar(
+      currentIndex: _currentIndex,
+      onTap: (index) => setState(() => _currentIndex = index),
+      selectedItemColor: const Color(0xFF3F6DF6),
+      unselectedItemColor: Colors.grey,
+      showSelectedLabels: true,
+      items: const [
+        BottomNavigationBarItem(icon: Icon(Icons.grid_view_rounded), label: 'Beranda'),
+        BottomNavigationBarItem(icon: Icon(LucideIcons.stethoscope), label: 'Kelola'),
+        BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profil'),
+      ],
+    );
+  }
 }
 
-// Komponen Card Statistik yang dipisahkan agar kode bersih
+// Perbaikan widget _StatCard
 class _StatCard extends StatelessWidget {
   final String title;
   final String value;
@@ -206,18 +231,18 @@ class _StatCard extends StatelessWidget {
     return Expanded(
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 4),
-        padding: const EdgeInsets.symmetric(vertical: 14),
+        padding: const EdgeInsets.symmetric(vertical: 16),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.grey.shade200),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 5)],
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.grey.shade100),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 8, offset: const Offset(0, 4))],
         ),
         child: Column(
           children: [
-            Text(value, style: TextStyle(fontWeight: FontWeight.bold, color: color, fontSize: 18)),
+            Text(value, style: TextStyle(fontWeight: FontWeight.bold, color: color, fontSize: 22)),
             const SizedBox(height: 4),
-            Text(title, style: const TextStyle(fontSize: 11, color: Colors.grey), textAlign: TextAlign.center),
+            Text(title, style: const TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.w500)),
           ],
         ),
       ),
@@ -225,47 +250,36 @@ class _StatCard extends StatelessWidget {
   }
 }
 
-// Tombol Kelola Dokter (Pindah ke bawah agar rapi)
+// Tombol Kelola Dokter Utama
 Widget _kelolaDokterCard(BuildContext context) {
   return Material(
-    color: const Color(0xFF3F6DF6), // Beri warna biru agar menonjol sebagai tombol utama
+    color: const Color(0xFF3F6DF6),
     borderRadius: BorderRadius.circular(16),
     child: InkWell(
       onTap: () => Navigator.pushNamed(context, AppRoutes.manageDoctor),
+      borderRadius: BorderRadius.circular(16),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(12)),
-              child: const Icon(LucideIcons.stethoscope, color: Colors.white),
+              child: const Icon(LucideIcons.stethoscope, color: Colors.white, size: 28),
             ),
-            const SizedBox(width: 14),
-            Column(
+            const SizedBox(width: 16),
+            const Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                Text('Kelola Dokter', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                Text('Tambah, Edit, & Jadwal', style: TextStyle(color: Colors.white70, fontSize: 12)),
+              children: [
+                Text('Manajemen Dokter', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+                Text('Atur registrasi dan jadwal rutin', style: TextStyle(color: Colors.white70, fontSize: 12)),
               ],
             ),
             const Spacer(),
-            const Icon(Icons.arrow_forward_ios, color: Colors.white, size: 16),
+            const Icon(Icons.arrow_forward_ios, color: Colors.white, size: 18),
           ],
         ),
       ),
     ),
-  );
-}
-
-Widget _bottomNav() {
-  return BottomNavigationBar(
-    showSelectedLabels: false,
-    showUnselectedLabels: false,
-    items: const [
-      BottomNavigationBarItem(icon: Icon(Icons.grid_view_rounded), label: 'Home'),
-      BottomNavigationBarItem(icon: Icon(Icons.notifications_none), label: 'Notif'),
-      BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profile'),
-    ],
   );
 }
