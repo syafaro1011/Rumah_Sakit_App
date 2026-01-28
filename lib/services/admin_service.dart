@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:rumahsakitapp/model/doctor_model.dart';
@@ -39,6 +40,15 @@ class AdminService {
   // 1. CREATE DOKTER ACCOUNT
   // ===============================
 
+  Future<FirebaseAuth> get _secondaryAuth async {
+    // Membuat instance Firebase App sementara
+    FirebaseApp secondaryApp = await Firebase.initializeApp(
+      name: 'SecondaryApp',
+      options: Firebase.app().options,
+    );
+    return FirebaseAuth.instanceFor(app: secondaryApp);
+  }
+
   //Upload Foto Dokter ke Firebase Storage
   Future<String?> uploadDoctorPhoto(String uid, File file) async {
     try {
@@ -56,20 +66,24 @@ class AdminService {
   // Create Dokter menggunakan Object Model
   Future<void> createDoctor(DoctorModel doctor, File? imageFile) async {
     try {
-      // 1. Buat akun Auth (Email & Password)
-      UserCredential res = await _auth.createUserWithEmailAndPassword(
+      // 1. Dapatkan instance secondary auth
+      FirebaseAuth authInstance = await _secondaryAuth;
+
+      // 2. Buat akun Auth via Secondary Instance
+      // Dengan cara ini, session Admin di instance utama tidak akan terputus
+      UserCredential res = await authInstance.createUserWithEmailAndPassword(
         email: doctor.email,
         password: doctor.password,
       );
 
       String uid = res.user!.uid;
 
-      // 2. Upload Foto jika ada
+      // 3. Upload Foto jika ada
       if (imageFile != null) {
         doctor.photoUrl = await uploadDoctorPhoto(uid, imageFile);
       }
 
-      // 3. Simpan data user ke koleksi 'users' (Identitas Login)
+      // 4. Simpan ke koleksi 'users'
       await _db.collection('users').doc(uid).set({
         'uid': uid,
         'nama': doctor.nama,
@@ -77,26 +91,26 @@ class AdminService {
         'role': 'dokter',
       });
 
-      // 4. Simpan data dokter ke koleksi 'doctors' (Profil Utama)
-      // Kita panggil toMap() tapi jadwal disimpan terpisah di bawah
+      // 5. Simpan ke koleksi 'doctors'
       await _db.collection('doctors').doc(uid).set(doctor.toMap());
 
-      // 5. SIMPAN JADWAL KE SUB-COLLECTION 'jadwal'
-      // Ini bagian penting agar jadwal tersimpan di folder 'jadwal' milik dokter tersebut
+      // 6. Simpan jadwal ke sub-collection 'jadwal'
       if (doctor.schedules.isNotEmpty) {
-        final batch = _db
-            .batch(); // Menggunakan Batch agar lebih efisien dan cepat
+        final batch = _db.batch();
         for (var s in doctor.schedules) {
           var scheduleRef = _db
               .collection('doctors')
               .doc(uid)
               .collection('jadwal')
-              .doc(); // Generate ID otomatis
+              .doc();
 
           batch.set(scheduleRef, s.toMap());
         }
-        await batch.commit(); // Simpan semua jadwal sekaligus
+        await batch.commit();
       }
+
+      // 7. PENTING: Sign out dari secondary instance agar tidak menumpuk memori
+      await authInstance.signOut();
     } catch (e) {
       rethrow;
     }
@@ -109,7 +123,10 @@ class AdminService {
 
   // Menghapus semua jadwal sebelum menulis yang baru saat Edit
   Future<void> deleteAllJadwal(String dokterId) async {
-    final collection = _db.collection('doctors').doc(dokterId).collection('jadwal');
+    final collection = _db
+        .collection('doctors')
+        .doc(dokterId)
+        .collection('jadwal');
     final snapshots = await collection.get();
     for (var doc in snapshots.docs) {
       await doc.reference.delete();
