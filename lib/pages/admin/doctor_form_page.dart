@@ -38,14 +38,24 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
       // Catatan: Jika ingin update jadwal, Anda perlu looping update sub-collection jadwal
     } else {
       // Logika Create Baru
-      await adminService.createDoctor(
-        nama: nameController.text,
-        poli: selectedSpecialist!,
-        email: emailController.text,
-        password: passwordController.text,
-        noStr: sipController.text,
-        noHp: phoneController.text,
-      );
+     await adminService.createDoctor(
+  nama: nameController.text,
+  poli: selectedSpecialist!,
+  email: emailController.text,
+  password: passwordController.text,
+  noStr: sipController.text,
+  noHp: phoneController.text,
+  jadwal: schedules.map((s) {
+    String _formatTime(TimeOfDay t) {
+  return '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+}
+    return {
+      'hari': s.day,
+      'jam_mulai': _formatTime(s.start),
+      'jam_selesai': _formatTime(s.end),
+    };
+  }).toList(),
+);
 
       // Simpan Jadwal (Sub-collection)
       // Kita perlu ID dokter yang baru dibuat. 

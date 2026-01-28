@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../model/doctor_model.dart';
+import '../../services/admin_service.dart';
 import 'doctor_form_page.dart';
 
 class ManageDoctorPage extends StatefulWidget {
@@ -10,49 +12,127 @@ class ManageDoctorPage extends StatefulWidget {
 }
 
 class _ManageDoctorPageState extends State<ManageDoctorPage> {
-  final List<DoctorModel> doctors = [
-    DoctorModel(
-      id: '1',
-      nama: 'Dr. FUFUFAFA',
-      poli: 'Poli Gigi',
-      sip: '1232141234',
-      email: 'fufufafa@example.com',
-      password: 'password123',
-      phone: '0821321324215',
-      experience: '10 Tahun',
-      isActive: true,
-      schedules: [
-        DoctorSchedule(
-          day: 'Senin',
-          start: const TimeOfDay(hour: 8, minute: 0),
-          end: const TimeOfDay(hour: 13, minute: 0),
+  final AdminService adminService = AdminService();
+
+  // ================= MAP DOCTOR =================
+
+  Future<List<DoctorModel>> mapDoctors(QuerySnapshot snapshot) async {
+    List<DoctorModel> doctors = [];
+
+    for (var doc in snapshot.docs) {
+      final data = doc.data() as Map<String, dynamic>;
+
+      final jadwalSnapshot =
+          await adminService.getJadwalDokter(doc.id).first;
+
+      final schedules = jadwalSnapshot.docs.map((j) {
+        final jd = j.data() as Map<String, dynamic>;
+        return DoctorSchedule(
+          day: jd['hari'] ?? '',
+          start: _parseTime(jd['jam_mulai']),
+          end: _parseTime(jd['jam_selesai']),
+        );
+      }).toList();
+
+      doctors.add(
+        DoctorModel(
+          id: doc.id,
+          nama: data['nama'] ?? '',
+          poli: data['poli'] ?? '',
+          sip: data['no_str'] ?? '',
+          email: data['email'] ?? '',
+          password: '',
+          phone: data['no_hp'] ?? '',
+          experience: data['experience'] ?? '',
+          isActive: data['status'] == 'aktif',
+          schedules: schedules,
+          photoPath: data['photoPath'],
         ),
-        DoctorSchedule(
-          day: 'Kamis',
-          start: const TimeOfDay(hour: 15, minute: 0),
-          end: const TimeOfDay(hour: 20, minute: 0),
+      );
+    }
+    return doctors;
+  }
+
+  TimeOfDay _parseTime(String time) {
+    final parts = time.split(':');
+    return TimeOfDay(
+      hour: int.parse(parts[0]),
+      minute: int.parse(parts[1]),
+    );
+  }
+// Delete Doctor
+  Future<void> _deleteDoctor(DoctorModel doctor) async {
+  final confirm = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Hapus Dokter'),
+      content: Text('Yakin ingin menghapus ${doctor.nama}?'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Batal'),
+        ),
+        ElevatedButton(
+          onPressed: () => Navigator.pop(context, true),
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+          child: const Text('Hapus'),
         ),
       ],
     ),
-  ];
+  );
+
+  if (confirm == true) {
+    await adminService.deleteDoctor(doctor.id);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Dokter berhasil dihapus')),
+    );
+  }
+}
+
+  // ================= BUILD =================
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F7F7),
       appBar: _buildAppBar(),
-      body: Column(
-        children: [
-          _searchBar(),
-          Expanded(
-            child: ListView.builder(
-              itemCount: doctors.length,
-              itemBuilder: (context, index) {
-                return _doctorCard(doctors[index]);
-              },
-            ),
-          ),
-        ],
+      body: StreamBuilder<QuerySnapshot>(
+        stream: adminService.getAllDoctors(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.data!.docs.isEmpty) {
+            return const Center(child: Text('Tidak ada dokter'));
+          }
+
+          return FutureBuilder<List<DoctorModel>>(
+            future: mapDoctors(snapshot.data!),
+            builder: (context, doctorSnapshot) {
+              if (!doctorSnapshot.hasData) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              final doctors = doctorSnapshot.data!;
+
+              return Column(
+                children: [
+                  _searchBar(),
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: doctors.length,
+                      itemBuilder: (context, index) {
+                        return _doctorCard(doctors[index]);
+                      },
+                    ),
+                  ),
+                ],
+              );
+            },
+          );
+        },
       ),
     );
   }
@@ -78,14 +158,10 @@ class _ManageDoctorPageState extends State<ManageDoctorPage> {
       actions: [
         IconButton(
           onPressed: () async {
-            final result = await Navigator.push(
+            await Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const DoctorFormPage()),
             );
-
-            if (result != null) {
-              setState(() => doctors.add(result));
-            }
           },
           icon: Container(
             padding: const EdgeInsets.all(8),
@@ -117,7 +193,7 @@ class _ManageDoctorPageState extends State<ManageDoctorPage> {
       child: const TextField(
         decoration: InputDecoration(
           icon: Icon(Icons.search),
-          hintText: 'cari dokter',
+          hintText: 'Cari dokter',
           border: InputBorder.none,
         ),
       ),
@@ -144,78 +220,45 @@ class _ManageDoctorPageState extends State<ManageDoctorPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          /// HEADER
           Row(
-            children: [
-              Expanded(
-                child: Text(
-                  doctor.nama,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
-                  ),
-                ),
-              ),
-              Switch(
-                value: doctor.isActive,
-                activeThumbColor: Colors.green,
-                onChanged: (value) {
-                  setState(() => doctor.isActive = value);
-                },
-              ),
-            ],
-          ),
-          Text(doctor.poli, style: TextStyle(color: Colors.grey.shade600)),
-          const SizedBox(height: 4),
-          Text(
-            'SIP - ${doctor.sip}',
-            style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
-          ),
+  children: [
+    Expanded(
+      child: Text(
+        doctor.nama,
+        style: const TextStyle(
+          fontWeight: FontWeight.w700,
+          fontSize: 16,
+        ),
+      ),
+    ),
 
-          const Divider(height: 28),
+    // DELETE BUTTON
+    IconButton(
+      icon: const Icon(Icons.delete_outline, color: Colors.red),
+      onPressed: () => _deleteDoctor(doctor),
+    ),
+
+    // SWITCH AKTIF / NONAKTIF
+    Switch(
+      value: doctor.isActive,
+      onChanged: (value) {
+        adminService.updateStatusDokter(
+          dokterId: doctor.id,
+          status: value ? 'aktif' : 'nonaktif',
+        );
+      },
+    ),
+  ],
+),
+          Text(doctor.poli, style: TextStyle(color: Colors.grey.shade600)),
+          const Divider(),
 
           _infoRow(Icons.email_outlined, 'Email', doctor.email),
           _infoRow(Icons.phone_outlined, 'No. Telpon', doctor.phone),
           _infoRow(
             Icons.calendar_today_outlined,
-            'Jadwal Praktik',
+            'Jadwal',
             _formatSchedule(doctor.schedules),
-          ),
-
-          const SizedBox(height: 14),
-
-          /// ACTION
-          Row(
-            children: [
-              _iconButton(
-                icon: Icons.edit_outlined,
-                color: Colors.grey.shade200,
-                onTap: () async {
-                  final result = await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => DoctorFormPage(initialDoctor: doctor),
-                    ),
-                  );
-
-                  if (result != null) {
-                    setState(() {
-                      final index = doctors.indexOf(doctor);
-                      doctors[index] = result;
-                    });
-                  }
-                },
-              ),
-              const SizedBox(width: 10),
-              _iconButton(
-                icon: Icons.delete_outline,
-                color: Colors.red.shade100,
-                iconColor: Colors.red,
-                onTap: () => _deleteDoctor(doctor),
-              ),
-              const Spacer(),
-              _statusBadge(doctor.isActive),
-            ],
           ),
         ],
       ),
@@ -228,22 +271,10 @@ class _ManageDoctorPageState extends State<ManageDoctorPage> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, size: 18, color: Colors.grey),
           const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-                Text(value),
-              ],
-            ),
-          ),
+          Expanded(child: Text('$title: $value')),
         ],
       ),
     );
@@ -251,51 +282,8 @@ class _ManageDoctorPageState extends State<ManageDoctorPage> {
 
   String _formatSchedule(List<DoctorSchedule> schedules) {
     return schedules
-        .map((s) {
-          return '${s.day}: ${s.start.format(context)} - ${s.end.format(context)}';
-        })
+        .map((s) =>
+            '${s.day} ${s.start.format(context)} - ${s.end.format(context)}')
         .join('\n');
-  }
-
-  Widget _iconButton({
-    required IconData icon,
-    required Color color,
-    Color iconColor = Colors.black,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Icon(icon, color: iconColor),
-      ),
-    );
-  }
-
-  Widget _statusBadge(bool isActive) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      decoration: BoxDecoration(
-        color: isActive ? Colors.green.shade100 : Colors.red.shade100,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        isActive ? 'Aktif' : 'Nonaktif',
-        style: TextStyle(
-          color: isActive ? Colors.green : Colors.red,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-
-  void _deleteDoctor(DoctorModel doctor) {
-    setState(() => doctors.remove(doctor));
   }
 }
