@@ -121,6 +121,8 @@ class AdminService {
   // ===============================
   Future<void> deleteDoctor(String doctorId) async {
     await _db.collection('doctors').doc(doctorId).delete();
+    await _db.collection('users').doc(doctorId).delete();
+    await deleteAllJadwal(doctorId);
   }
 
   // ===============================
