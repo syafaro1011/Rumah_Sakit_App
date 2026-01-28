@@ -4,6 +4,40 @@ import 'doctor_list_page.dart';
 class PilihPoliPage extends StatelessWidget {
   const PilihPoliPage({super.key});
 
+  // 🔥 SUMBER POLI (SATU PINTU)
+  static final List<Map<String, dynamic>> poliList = [
+    {
+      'name': 'Poli Umum',
+      'icon': Icons.local_hospital_outlined,
+      'color': Color(0xFFEAF1FF),
+    },
+    {
+      'name': 'Poli Gigi',
+      'icon': Icons.medical_services_outlined,
+      'color': Color(0xFFFFF4DB),
+    },
+    {
+      'name': 'Poli Saraf',
+      'icon': Icons.psychology_outlined,
+      'color': Color(0xFFE8F5E9),
+    },
+    {
+      'name': 'Poli Anak',
+      'icon': Icons.child_friendly_outlined,
+      'color': Color(0xFFFFE9E4),
+    },
+    {
+      'name': 'Poli Mata',
+      'icon': Icons.remove_red_eye_outlined,
+      'color': Color(0xFFE3F2FD),
+    },
+    {
+      'name': 'Poli THT',
+      'icon': Icons.hearing_outlined,
+      'color': Color(0xFFF3E5F5),
+    },
+  ];
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -17,35 +51,9 @@ class PilihPoliPage extends StatelessWidget {
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
-          'Doctors',
+          'Poli',
           style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600),
         ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: Stack(
-              children: [
-                const Icon(
-                  Icons.notifications_none,
-                  size: 26,
-                  color: Colors.black,
-                ),
-                Positioned(
-                  right: 0,
-                  top: 2,
-                  child: Container(
-                    width: 8,
-                    height: 8,
-                    decoration: const BoxDecoration(
-                      color: Colors.red,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
 
       bottomNavigationBar: _bottomNav(),
@@ -55,36 +63,24 @@ class PilihPoliPage extends StatelessWidget {
         child: Column(
           children: [
             const SizedBox(height: 10),
-            const Text(
-              'Poli',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 24),
 
-            _poliCard(
-              icon: Icons.remove_red_eye_outlined,
-              title: 'Poli Mata',
-              bgColor: const Color(0xFFEAF1FF),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const DoctorListPage(poliName: 'Poli Mata'),
-                  ),
-                );
-              },
-            ),
-            _poliCard(
-              icon: Icons.medical_services_outlined,
-              title: 'Poli Gigi',
-              bgColor: const Color(0xFFFFF4DB),
-              onTap: () {},
-            ),
-            _poliCard(
-              icon: Icons.favorite_outline,
-              title: 'Poli Jantung',
-              bgColor: const Color(0xFFFFE9E4),
-              onTap: () {},
+            /// 🔥 LIST POLI DINAMIS
+            ...poliList.map(
+              (poli) => _poliCard(
+                icon: poli['icon'],
+                title: poli['name'],
+                bgColor: poli['color'],
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => DoctorListPage(
+                        poli: poli['name'], // 🔥 INI YANG DIPAKAI QUERY
+                      ),
+                    ),
+                  );
+                },
+              ),
             ),
           ],
         ),
@@ -130,7 +126,10 @@ class PilihPoliPage extends StatelessWidget {
             const SizedBox(width: 16),
             Text(
               title,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),
@@ -139,14 +138,14 @@ class PilihPoliPage extends StatelessWidget {
   }
 
   Widget _bottomNav() {
-    return BottomAppBar(
-      shape: const CircularNotchedRectangle(),
+    return const BottomAppBar(
+      shape: CircularNotchedRectangle(),
       notchMargin: 8,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
+        padding: EdgeInsets.symmetric(horizontal: 24),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: const [
+          children: [
             Icon(Icons.home_outlined, color: Colors.grey),
             Icon(Icons.person_outline, color: Colors.grey),
           ],

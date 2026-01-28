@@ -12,17 +12,13 @@ class PatientDashboardPage extends StatefulWidget {
 
 class _PatientDashboardPageState extends State<PatientDashboardPage> {
   final DashboardPatientService _dashboardService = DashboardPatientService();
-
   int _currentIndex = 0;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-
-      /// BOTTOM NAV
       bottomNavigationBar: _bottomNav(context),
-
       floatingActionButton: FloatingActionButton(
         backgroundColor: const Color(0xFF3F6DF6),
         onPressed: () {
@@ -31,7 +27,6 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
         child: const Icon(Icons.add, color: Colors.white),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
@@ -42,42 +37,35 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
                 future: _dashboardService.getUserProfile(),
                 builder: (context, snapshot) {
                   if (snapshot.hasData) {
-                    String nama = snapshot.data!['nama'] ?? 'User';
-                    return _header(nama);
+                    return _header(snapshot.data!['nama'] ?? 'User');
                   }
-                  return _header("..."); // Loading state
+                  return _header('...');
                 },
               ),
               const SizedBox(height: 20),
               _todayPracticeCard(),
               const SizedBox(height: 24),
-
               _menuCard(
                 icon: Icons.calendar_today_outlined,
                 title: 'Booking Dokter',
                 subtitle: 'Buat jadwal praktik',
                 bgColor: const Color(0xFFEAF1FF),
-                onTap: () {
-                  Navigator.pushNamed(context, AppRoutes.pilihPoli);
-                },
+                onTap: () => Navigator.pushNamed(context, AppRoutes.pilihPoli),
               ),
               _menuCard(
                 icon: Icons.access_time,
                 title: 'Antrian',
                 subtitle: 'Lihat Antrian Online',
                 bgColor: const Color(0xFFFFF4DB),
-                onTap: () {
-                  Navigator.pushNamed(context, AppRoutes.queueInfo);
-                },
+                onTap: () => Navigator.pushNamed(context, AppRoutes.queueInfo),
               ),
               _menuCard(
                 icon: Icons.description_outlined,
                 title: 'Rekam Medis',
                 subtitle: 'Riwayat Kesehatan Anda',
                 bgColor: const Color(0xFFFFE9E4),
-                onTap: () {
-                  Navigator.pushNamed(context, AppRoutes.medicalRecord);
-                },
+                onTap: () =>
+                    Navigator.pushNamed(context, AppRoutes.medicalRecord),
               ),
               const SizedBox(height: 80),
             ],
@@ -87,7 +75,7 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
     );
   }
 
-  // ===================== UI COMPONENTS =====================
+  // ================= UI =================
 
   Widget _header(String nama) {
     return Row(
@@ -98,32 +86,14 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
           children: [
             Text(
               'Welcome Back, $nama!',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
             ),
-            SizedBox(height: 6),
-            Text(
-              'Semoga sehat selalu ya!',
-              style: TextStyle(color: Colors.grey),
-            ),
+            const SizedBox(height: 6),
+            const Text('Semoga sehat selalu ya!',
+                style: TextStyle(color: Colors.grey)),
           ],
         ),
-        Stack(
-          children: [
-            const Icon(Icons.notifications_none, size: 28),
-            Positioned(
-              right: 0,
-              top: 2,
-              child: Container(
-                width: 8,
-                height: 8,
-                decoration: const BoxDecoration(
-                  color: Colors.red,
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
-          ],
-        ),
+        const Icon(Icons.notifications_none, size: 28),
       ],
     );
   }
@@ -132,22 +102,19 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
     return StreamBuilder<QuerySnapshot>(
       stream: _dashboardService.getTodayBooking(),
       builder: (context, snapshot) {
-        // 1. Loading State
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        // 2. Jika Tidak Ada Data Booking
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
           return _emptyBookingCard();
         }
-        // 3. Jika Ada Data, Ambil dokumen pertama
-        var bookingData =
+
+        final data =
             snapshot.data!.docs.first.data() as Map<String, dynamic>;
+        final waktu = (data['waktu_booking'] as Timestamp).toDate();
 
         return Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
+            color: Colors.white,
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.08),
@@ -155,15 +122,12 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
                 offset: const Offset(0, 4),
               ),
             ],
-            color: Colors.white,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Praktik Hari Ini',
-                style: TextStyle(fontWeight: FontWeight.w600),
-              ),
+              const Text('Praktik Hari Ini',
+                  style: TextStyle(fontWeight: FontWeight.w600)),
               const SizedBox(height: 12),
               Container(
                 padding: const EdgeInsets.all(16),
@@ -175,33 +139,23 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '${bookingData['namaDokter']}, ${bookingData['poli']}',
-                      style: const TextStyle(fontWeight: FontWeight.w600),
+                      '${data['nama_dokter']} - ${data['poli']}',
+                      style:
+                          const TextStyle(fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(height: 6),
-                    const Text(
-                      'Silakan datang 15 menit sebelum jadwal',
-                      style: TextStyle(color: Colors.grey, fontSize: 12),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        const Icon(Icons.calendar_today, size: 16),
-                        const SizedBox(width: 6),
-                        Text(bookingData['tanggal'] ?? '-'),
-                        const SizedBox(width: 16),
-                        const Icon(Icons.access_time, size: 16),
-                        const SizedBox(width: 6),
-                        Text(bookingData['jam'] ?? '-'),
-                      ],
+                    Text(
+                      '${waktu.day}-${waktu.month}-${waktu.year} | '
+                      '${waktu.hour.toString().padLeft(2, '0')}:${waktu.minute.toString().padLeft(2, '0')}',
+                      style: const TextStyle(color: Colors.grey),
                     ),
                     const Divider(height: 24),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Nomor Antrian:'),
+                        const Text('Nomor Antrian'),
                         Text(
-                          bookingData['nomorAntrian'] ?? '-',
+                          data['nomor_antrean'].toString(),
                           style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -220,7 +174,6 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
     );
   }
 
-  // Widget tampilan jika pasien belum booking apapun
   Widget _emptyBookingCard() {
     return Container(
       width: double.infinity,
@@ -228,15 +181,14 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
       decoration: BoxDecoration(
         color: Colors.grey[100],
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey[300]!),
       ),
       child: Column(
-        children: [
-          Icon(Icons.event_busy, color: Colors.grey[400], size: 40),
-          const SizedBox(height: 10),
-          const Text(
-            "Belum ada jadwal praktik hari ini",
-            style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w500),
+        children: const [
+          Icon(Icons.event_busy, color: Colors.grey, size: 40),
+          SizedBox(height: 10),
+          Text(
+            'Belum ada jadwal praktik hari ini',
+            style: TextStyle(color: Colors.grey),
           ),
         ],
       ),
@@ -252,15 +204,13 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
   }) {
     return InkWell(
       onTap: onTap,
-      splashColor: Colors.blue.withOpacity(0.1),
-      highlightColor: Colors.transparent,
       borderRadius: BorderRadius.circular(16),
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
           borderRadius: BorderRadius.circular(16),
+          color: Colors.white,
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.06),
@@ -274,22 +224,18 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
             Container(
               width: 48,
               height: 48,
-              decoration: BoxDecoration(
-                color: bgColor,
-                borderRadius: BorderRadius.circular(12),
-              ),
+              decoration:
+                  BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(12)),
               child: Icon(icon),
             ),
             const SizedBox(width: 16),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 4),
-                Text(subtitle, style: const TextStyle(color: Colors.grey)),
+                Text(title,
+                    style: const TextStyle(fontWeight: FontWeight.w600)),
+                Text(subtitle,
+                    style: const TextStyle(color: Colors.grey)),
               ],
             ),
           ],
@@ -297,8 +243,6 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
       ),
     );
   }
-
-  // ===================== BOTTOM NAV =====================
 
   Widget _bottomNav(BuildContext context) {
     return BottomAppBar(
@@ -309,32 +253,14 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            /// HOME
-            InkWell(
-              onTap: () {
-                setState(() => _currentIndex = 0);
-              },
-              child: Icon(
-                Icons.home_outlined,
+            Icon(Icons.home_outlined,
                 color: _currentIndex == 0
                     ? const Color(0xFF3F6DF6)
-                    : Colors.grey,
-              ),
-            ),
-
-            /// PROFILE
-            InkWell(
-              onTap: () {
-                setState(() => _currentIndex = 1);
-                Navigator.pushNamed(context, AppRoutes.patientProfile);
-              },
-              child: Icon(
-                Icons.person_outline,
+                    : Colors.grey),
+            Icon(Icons.person_outline,
                 color: _currentIndex == 1
                     ? const Color(0xFF3F6DF6)
-                    : Colors.grey,
-              ),
-            ),
+                    : Colors.grey),
           ],
         ),
       ),
