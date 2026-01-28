@@ -157,7 +157,7 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: DropdownButtonFormField<String>(
-        value: selectedSpecialist,
+        initialValue: selectedSpecialist,
         items: specialists
             .map((e) => DropdownMenuItem(value: e, child: Text(e)))
             .toList(),
