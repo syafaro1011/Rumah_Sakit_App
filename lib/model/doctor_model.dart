@@ -38,7 +38,7 @@ class DoctorModel {
       'no_hp': phone,
       'experience': experience,
       'status': isActive ? 'aktif' : 'nonaktif',
-      'photoUrl': photoUrl,
+      'photoUrl': photoUrl ?? ''
       // HAPUS atau KOMENTARI baris schedules di bawah ini
       // agar dokumen utama tetap bersih saat menggunakan sub-koleksi.
       // 'schedules': schedules.map((s) => s.toMap()).toList(),
@@ -56,7 +56,9 @@ class DoctorModel {
       phone: map['no_hp'] ?? '',
       experience: map['experience'] ?? '',
       isActive: map['status'] == 'aktif',
-      photoUrl: map['photoUrl'],
+      photoUrl: (map['photoUrl'] != null && map['photoUrl'].toString().isNotEmpty) 
+              ? map['photoUrl'] 
+              : null,
       // PROSES JADWAL DIKOSONGKAN
       // Karena jadwal akan diisi secara terpisah oleh StreamBuilder di Profile Page
       schedules: [],

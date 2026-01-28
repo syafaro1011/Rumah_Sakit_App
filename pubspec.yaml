@@ -40,6 +40,7 @@ dependencies:
   image_picker: ^1.2.1
   cloud_firestore: ^6.1.1
   lucide_icons: ^0.257.0
+  path: ^1.9.1
 
 dev_dependencies:
   flutter_test:

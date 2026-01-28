@@ -28,41 +28,46 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
 
     try {
       final adminService = AdminService();
-      String? currentPhotoUrl = widget.initialDoctor?.photoUrl;
+      // Ambil URL lama sebagai cadangan agar tidak null jika tidak ganti foto
+      String? finalPhotoUrl = widget.initialDoctor?.photoUrl;
 
       if (isEdit) {
         String uid = widget.initialDoctor!.id;
 
-        // 1. Upload foto baru jika ada penggantian
+        // 1. Jika ada file baru, upload dan ambil URL barunya
         if (_imageFile != null) {
-          currentPhotoUrl = await adminService.uploadDoctorPhoto(uid, _imageFile!);
+          finalPhotoUrl = await adminService.uploadDoctorPhoto(
+            uid,
+            _imageFile!,
+          );
         }
 
-        // 2. Update data dasar di dokumen utama (Tanpa field 'schedules')
+        // 2. Update data ke Firestore
         await adminService.updateDoctor(uid, {
           'nama': nameController.text,
           'poli': selectedSpecialist,
           'experience': experienceController.text,
           'no_hp': phoneController.text,
           'no_SIP': sipController.text,
-          'photoUrl': currentPhotoUrl,
+          'photoUrl': finalPhotoUrl, // Mengirim URL (baik lama maupun baru)
         });
 
-        // 3. Sinkronisasi Jadwal (Hapus yang lama, tulis yang baru)
-        // Pastikan Anda sudah menambahkan fungsi deleteAllJadwal di AdminService
-        await adminService.deleteAllJadwal(uid); 
+        // 3. Update Jadwal (Sub-collection)
+        await adminService.deleteAllJadwal(uid);
         for (var s in schedules) {
           await adminService.createJadwalDokter(
             dokterId: uid,
             hari: s.day,
-            jamMulai: '${s.start.hour}:${s.start.minute.toString().padLeft(2, '0')}',
-            jamSelesai: '${s.end.hour}:${s.end.minute.toString().padLeft(2, '0')}',
+            jamMulai:
+                '${s.start.hour}:${s.start.minute.toString().padLeft(2, '0')}',
+            jamSelesai:
+                '${s.end.hour}:${s.end.minute.toString().padLeft(2, '0')}',
           );
         }
       } else {
-        // Logika CREATE
+        // Logika TAMBAH BARU (Create)
         final newDoctor = DoctorModel(
-          id: '', // Diisi otomatis oleh service
+          id: '',
           nama: nameController.text,
           poli: selectedSpecialist!,
           sip: sipController.text,
@@ -71,22 +76,26 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
           phone: phoneController.text,
           experience: experienceController.text,
           isActive: true,
-          schedules: schedules, // Akan diproses sebagai sub-col di createDoctor
+          schedules: schedules,
+          photoUrl: '', // Akan diisi di dalam createDoctor setelah upload
         );
 
         await adminService.createDoctor(newDoctor, _imageFile);
       }
 
       if (mounted) {
-        Navigator.pop(context); // Tutup Loading
-        Navigator.pop(context, true); // Balik ke list dengan refresh trigger
+        Navigator.pop(context);
+        Navigator.pop(context, true);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Data berhasil disimpan')));
       }
     } catch (e) {
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal: ${e.toString()}')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Gagal: ${e.toString()}')));
       }
     }
   }
@@ -98,14 +107,18 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
       child: TextFormField(
         controller: passwordController,
         obscureText: true,
-        validator: (v) => (!isEdit && (v == null || v.isEmpty)) ? 'Wajib diisi' : null,
+        validator: (v) =>
+            (!isEdit && (v == null || v.isEmpty)) ? 'Wajib diisi' : null,
         decoration: InputDecoration(
-          labelText: isEdit ? 'Password Baru (Kosongkan jika tidak ganti)' : 'Password *',
+          labelText: isEdit
+              ? 'Password Baru (Kosongkan jika tidak ganti)'
+              : 'Password *',
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
         ),
       ),
     );
   }
+
   // Fungsi untuk mengambil foto
   Future<void> _pickImage() async {
     final XFile? selected = await _picker.pickImage(

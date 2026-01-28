@@ -4,6 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:rumahsakitapp/model/doctor_model.dart';
+import 'package:path/path.dart' as p;
 
 class AdminService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -50,18 +51,28 @@ class AdminService {
   }
 
   //Upload Foto Dokter ke Firebase Storage
-  Future<String?> uploadDoctorPhoto(String uid, File file) async {
-    try {
-      // Simpan di folder doctors/UID_DOKTER.jpg
-      Reference ref = _storage.ref().child('doctors').child('$uid.jpg');
-      UploadTask uploadTask = ref.putFile(file);
-      TaskSnapshot snapshot = await uploadTask;
-      return await snapshot.ref
-          .getDownloadURL(); // Ambil URL untuk disimpan di Firestore
-    } catch (e) {
-      return null;
-    }
+  Future<String> uploadDoctorPhoto(String uid, File file) async {
+  try {
+    // Mengambil ekstensi asli file (misal: .png, .jpeg, .webp)
+    String extension = p.extension(file.path); 
+    
+    // Simpan dengan ekstensi aslinya
+    Reference ref = FirebaseStorage.instance
+        .ref()
+        .child('doctors')
+        .child('$uid$extension');
+    
+    UploadTask uploadTask = ref.putFile(
+      file,
+      SettableMetadata(contentType: 'image/${extension.replaceFirst('.', '')}'),
+    );
+    
+    TaskSnapshot snapshot = await uploadTask;
+    return await snapshot.ref.getDownloadURL();
+  } catch (e) {
+    throw Exception('Gagal upload foto: $e');
   }
+}
 
   // Create Dokter menggunakan Object Model
   Future<void> createDoctor(DoctorModel doctor, File? imageFile) async {
