@@ -13,17 +13,21 @@ class PatientDashboardPage extends StatefulWidget {
 class _PatientDashboardPageState extends State<PatientDashboardPage> {
   final DashboardPatientService _dashboardService = DashboardPatientService();
 
+  int _currentIndex = 0;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
 
       /// BOTTOM NAV
-      bottomNavigationBar: _bottomNav(),
+      bottomNavigationBar: _bottomNav(context),
 
       floatingActionButton: FloatingActionButton(
         backgroundColor: const Color(0xFF3F6DF6),
-        onPressed: () {},
+        onPressed: () {
+          Navigator.pushNamed(context, AppRoutes.pilihPoli);
+        },
         child: const Icon(Icons.add, color: Colors.white),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
@@ -71,6 +75,9 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
                 title: 'Rekam Medis',
                 subtitle: 'Riwayat Kesehatan Anda',
                 bgColor: const Color(0xFFFFE9E4),
+                onTap: () {
+                  Navigator.pushNamed(context, AppRoutes.medicalRecord);
+                },
               ),
               const SizedBox(height: 80),
             ],
@@ -291,7 +298,9 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
     );
   }
 
-  Widget _bottomNav() {
+  // ===================== BOTTOM NAV =====================
+
+  Widget _bottomNav(BuildContext context) {
     return BottomAppBar(
       shape: const CircularNotchedRectangle(),
       notchMargin: 8,
@@ -299,9 +308,33 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
         padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: const [
-            Icon(Icons.home_outlined, color: Color(0xFF3F6DF6)),
-            Icon(Icons.person_outline, color: Colors.grey),
+          children: [
+            /// HOME
+            InkWell(
+              onTap: () {
+                setState(() => _currentIndex = 0);
+              },
+              child: Icon(
+                Icons.home_outlined,
+                color: _currentIndex == 0
+                    ? const Color(0xFF3F6DF6)
+                    : Colors.grey,
+              ),
+            ),
+
+            /// PROFILE
+            InkWell(
+              onTap: () {
+                setState(() => _currentIndex = 1);
+                Navigator.pushNamed(context, AppRoutes.patientProfile);
+              },
+              child: Icon(
+                Icons.person_outline,
+                color: _currentIndex == 1
+                    ? const Color(0xFF3F6DF6)
+                    : Colors.grey,
+              ),
+            ),
           ],
         ),
       ),
