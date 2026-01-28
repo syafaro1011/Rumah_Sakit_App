@@ -14,7 +14,6 @@ class DoctorFormPage extends StatefulWidget {
 }
 
 class _DoctorFormPageState extends State<DoctorFormPage> {
-
   File? _imageFile; // Untuk menampung file foto yang dipilih
   final ImagePicker _picker = ImagePicker();
 
@@ -32,15 +31,16 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
       final adminService = AdminService();
 
       if (isEdit) {
-        // Update data dasar
+        // Update data dasar DAN jadwal dalam satu map
         await adminService.updateDoctor(widget.initialDoctor!.id, {
           'nama': nameController.text,
           'poli': selectedSpecialist,
           'experience': experienceController.text,
           'no_hp': phoneController.text,
           'no_SIP': sipController.text,
+          // TAMBAHKAN INI: Mengirim array jadwal terbaru ke Firestore
+          'schedules': schedules.map((s) => s.toMap()).toList(),
         });
-        // Catatan: Update jadwal memerlukan logika tambahan (hapus jadwal lama, tulis baru)
       } else {
         // Buat objek model baru
         final newDoctor = DoctorModel(
@@ -158,7 +158,12 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
               _dropdown(),
               _field('Pengalaman', experienceController, hint: '10 Tahun'),
               _field('Email *', emailController),
-              _field('Password *', passwordController),
+              _field(
+                isEdit
+                    ? 'Password (Kosongkan jika tidak diubah)'
+                    : 'Password *',
+                passwordController, // Tambahkan parameter custom jika perlu
+              ),
               _field('SIP *', sipController),
               _field('Nomor Telepon *', phoneController),
               _imagePickerWidget(),
@@ -314,12 +319,16 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
             shape: BoxShape.circle,
             border: Border.all(color: const Color(0xFF3F6DF6), width: 2),
             image: _imageFile != null
-                ? DecorationImage(image: FileImage(_imageFile!), fit: BoxFit.cover)
+                ? DecorationImage(
+                    image: FileImage(_imageFile!),
+                    fit: BoxFit.cover,
+                  )
                 : (widget.initialDoctor?.photoUrl != null
-                    ? DecorationImage(
-                        image: NetworkImage(widget.initialDoctor!.photoUrl!),
-                        fit: BoxFit.cover)
-                    : null),
+                      ? DecorationImage(
+                          image: NetworkImage(widget.initialDoctor!.photoUrl!),
+                          fit: BoxFit.cover,
+                        )
+                      : null),
           ),
           child: _imageFile == null && widget.initialDoctor?.photoUrl == null
               ? const Icon(Icons.camera_alt, size: 40, color: Color(0xFF3F6DF6))

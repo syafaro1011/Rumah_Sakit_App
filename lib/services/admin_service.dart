@@ -57,60 +57,36 @@ class AdminService {
 
   // Create Dokter menggunakan Object Model
   Future<void> createDoctor(DoctorModel doctor, File? imageFile) async {
-    // 1. Buat instance Firebase sementara agar admin tidak ter-logout
-    // FirebaseApp secondaryApp = await Firebase.initializeApp(
-    //   name: 'SecondaryApp',
-    //   options: Firebase.app().options,
-    // );
+  try {
+    // 1. Buat akun Auth
+    UserCredential res = await _auth.createUserWithEmailAndPassword(
+      email: doctor.email,
+      password: doctor.password,
+    );
 
-    // FirebaseAuth secondaryAuth = FirebaseAuth.instanceFor(app: secondaryApp);
-
-    try {
-      // 2. Buat akun dokter di instance sekunder
-      UserCredential res = await _auth.createUserWithEmailAndPassword(
-        email: doctor.email,
-        password: doctor.password,
-      );
-
-      String uid = res.user!.uid;
-      String? finalUrl;
-
-      if (imageFile != null) {
-        finalUrl = await uploadDoctorPhoto(uid, imageFile);
-      }
-
-      // Update doctor object dengan URL foto
-      doctor.photoUrl = finalUrl;
-
-      // Simpan ke Firestore
-      await _db.collection('doctors').doc(uid).set(doctor.toMap());
-
-      // 3. Simpan data ke Firestore (Tetap pakai instance utama)
-      await _db.collection('users').doc(uid).set({
-        'uid': uid,
-        'nama': doctor.nama,
-        'email': doctor.email,
-        'role': 'dokter',
-      });
-
-      await _db.collection('doctors').doc(uid).set(doctor.toMap());
-
-      // for (var s in doctor.schedules) {
-      //   await _db
-      //       .collection('doctors')
-      //       .doc(uid)
-      //       .collection('jadwal')
-      //       .add(s.toMap());
-      // }
-
-      // // 4. Logout akun baru dari instance sekunder dan hapus instance-nya
-      // await secondaryAuth.signOut();
-      // await secondaryApp.delete();
-    } catch (e) {
-      // await secondaryApp.delete();
-      rethrow;
+    String uid = res.user!.uid;
+    
+    // 2. Upload Foto jika ada
+    if (imageFile != null) {
+      doctor.photoUrl = await uploadDoctorPhoto(uid, imageFile);
     }
+
+    // 3. Simpan data user (untuk login)
+    await _db.collection('users').doc(uid).set({
+      'uid': uid,
+      'nama': doctor.nama,
+      'email': doctor.email,
+      'role': 'dokter',
+    });
+
+    // 4. Simpan data dokter ke koleksi 'doctors'
+    // schedules akan otomatis tersimpan sebagai array jika toMap sudah benar
+    await _db.collection('doctors').doc(uid).set(doctor.toMap());
+
+  } catch (e) {
+    rethrow;
   }
+}
 
   // Update Dokter
   Future<void> updateDoctor(String id, Map<String, dynamic> data) async {
