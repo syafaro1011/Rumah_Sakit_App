@@ -68,6 +68,7 @@ class AdminService {
         'email': email,
         'no_str': noStr,
         'no_hp': noHp,
+        'experience': experience,
         'status': 'aktif',
         'created_at': Timestamp.now(),
       });
