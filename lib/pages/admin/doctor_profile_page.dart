@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import '../../model/doctor_model.dart';
+import 'package:rumahsakitapp/model/doctor_model.dart';
 
 class DoctorProfilePage extends StatelessWidget {
   final DoctorModel doctor;
@@ -44,7 +44,7 @@ class DoctorProfilePage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                doctor.name,
+                doctor.nama,
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
