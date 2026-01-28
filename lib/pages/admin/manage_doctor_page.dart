@@ -215,7 +215,7 @@ class _ManageDoctorPageState extends State<ManageDoctorPage> {
               ),
               Switch(
                 value: doctor.isActive,
-                activeColor: Colors.green,
+                activeThumbColor: Colors.green,
                 onChanged: (value) {
                   _adminService.updateStatusDokter(
                     dokterId: doctor.id,

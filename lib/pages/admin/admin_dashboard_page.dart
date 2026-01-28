@@ -4,6 +4,9 @@ import 'package:rumahsakitapp/model/doctor_model.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:rumahsakitapp/services/admin_service.dart';
 import 'package:rumahsakitapp/routes/app_routes.dart';
+import 'admin_profile_page.dart'; 
+import 'manage_doctor_page.dart';
+import 'security_page.dart'; // Pastikan file ini sudah dibuat
 
 class AdminDashboardPage extends StatefulWidget {
   const AdminDashboardPage({super.key});
@@ -19,6 +22,17 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
 
   @override
   Widget build(BuildContext context) {
+    // List halaman yang dikontrol oleh BottomNav
+    final List<Widget> pages = [
+      _mainDashboardContent(context), 
+      const ManageDoctorPage(),       
+      AdminProfilePage(
+        // Kita kirimkan fungsi klik dari sini (Poin 2)
+        onSecurityTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const SecurityPage())),
+        onAboutTap: () => _showAboutSheet(context),
+      ),       
+    ];
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
