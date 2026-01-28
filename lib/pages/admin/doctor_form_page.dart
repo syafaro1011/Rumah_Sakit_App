@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '/model/doctor_model.dart';
 import 'package:rumahsakitapp/services/admin_service.dart';
+import 'doctor_profile_page.dart';
 
 class DoctorFormPage extends StatefulWidget {
   final DoctorModel? initialDoctor;
@@ -45,6 +46,7 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
   password: passwordController.text,
   noStr: sipController.text,
   noHp: phoneController.text,
+  experience: experienceController.text,
   jadwal: schedules.map((s) {
     String _formatTime(TimeOfDay t) {
   return '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';

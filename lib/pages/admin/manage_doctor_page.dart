@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../model/doctor_model.dart';
 import '../../services/admin_service.dart';
 import 'doctor_form_page.dart';
+import 'doctor_profile_page.dart';
 
 class ManageDoctorPage extends StatefulWidget {
   const ManageDoctorPage({super.key});
@@ -203,7 +204,17 @@ class _ManageDoctorPageState extends State<ManageDoctorPage> {
   // ================= CARD =================
 
   Widget _doctorCard(DoctorModel doctor) {
-    return Container(
+  return InkWell(
+    borderRadius: BorderRadius.circular(18),
+    onTap: () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => DoctorProfilePage(doctor: doctor),
+        ),
+      );
+    },
+    child: Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -221,36 +232,40 @@ class _ManageDoctorPageState extends State<ManageDoctorPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-  children: [
-    Expanded(
-      child: Text(
-        doctor.nama,
-        style: const TextStyle(
-          fontWeight: FontWeight.w700,
-          fontSize: 16,
-        ),
-      ),
-    ),
+            children: [
+              Expanded(
+                child: Text(
+                  doctor.nama,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
 
-    // DELETE BUTTON
-    IconButton(
-      icon: const Icon(Icons.delete_outline, color: Colors.red),
-      onPressed: () => _deleteDoctor(doctor),
-    ),
+              // DELETE
+              IconButton(
+                icon: const Icon(Icons.delete_outline, color: Colors.red),
+                onPressed: () => _deleteDoctor(doctor),
+              ),
 
-    // SWITCH AKTIF / NONAKTIF
-    Switch(
-      value: doctor.isActive,
-      onChanged: (value) {
-        adminService.updateStatusDokter(
-          dokterId: doctor.id,
-          status: value ? 'aktif' : 'nonaktif',
-        );
-      },
-    ),
-  ],
-),
-          Text(doctor.poli, style: TextStyle(color: Colors.grey.shade600)),
+              // SWITCH AKTIF / NONAKTIF
+              Switch(
+                value: doctor.isActive,
+                onChanged: (value) {
+                  adminService.updateStatusDokter(
+                    dokterId: doctor.id,
+                    status: value ? 'aktif' : 'nonaktif',
+                  );
+                },
+              ),
+            ],
+          ),
+
+          Text(
+            doctor.poli,
+            style: TextStyle(color: Colors.grey.shade600),
+          ),
           const Divider(),
 
           _infoRow(Icons.email_outlined, 'Email', doctor.email),
@@ -262,9 +277,12 @@ class _ManageDoctorPageState extends State<ManageDoctorPage> {
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
+
+  
   // ================= HELPERS =================
 
   Widget _infoRow(IconData icon, String title, String value) {

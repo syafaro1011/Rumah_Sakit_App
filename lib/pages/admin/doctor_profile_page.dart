@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:rumahsakitapp/model/doctor_model.dart';
+import 'doctor_form_page.dart';
+
 
 class DoctorProfilePage extends StatelessWidget {
   final DoctorModel doctor;
@@ -103,9 +105,10 @@ class DoctorProfilePage extends StatelessWidget {
                 .join('\n'),
           ),
           const SizedBox(height: 16),
-          const Text('Experiences'),
+          const Text('Experience',
+              style: TextStyle(fontWeight: FontWeight.w600)),
           const SizedBox(height: 6),
-          Chip(label: Text('+ ${doctor.experience}')),
+            Text(doctor.experience),
         ],
       ),
     );
