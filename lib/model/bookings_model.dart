@@ -9,9 +9,9 @@ class AppointmentModel {
   final String userId;
   final String date;
   final String time;
-  final String status; // 'pending', 'confirmed', 'cancelled', 'completed'
+  final String status; 
   final int queueNumber;
-  final DateTime createdAt;
+  final DateTime? createdAt; // Dibuat nullable agar tidak error saat data baru dikirim
 
   AppointmentModel({
     required this.id,
@@ -24,10 +24,9 @@ class AppointmentModel {
     required this.time,
     required this.status,
     required this.queueNumber,
-    required this.createdAt,
+    this.createdAt,
   });
 
-  // Konversi dari DocumentSnapshot Firestore ke Object
   factory AppointmentModel.fromMap(Map<String, dynamic> map, String documentId) {
     return AppointmentModel(
       id: documentId,
@@ -39,12 +38,14 @@ class AppointmentModel {
       date: map['date'] ?? '',
       time: map['time'] ?? '',
       status: map['status'] ?? 'pending',
-      queueNumber: map['queueNumber'] ?? 0,
-      createdAt: (map['createdAt'] as Timestamp).toDate(),
+      queueNumber: (map['queueNumber'] as num?)?.toInt() ?? 0,
+      // Proteksi jika createdAt null atau masih berupa serverTimestamp di lokal
+      createdAt: map['createdAt'] is Timestamp 
+          ? (map['createdAt'] as Timestamp).toDate() 
+          : null,
     );
   }
 
-  // Konversi dari Object ke Map (jika ingin update data di masa depan)
   Map<String, dynamic> toMap() {
     return {
       'doctorId': doctorId,
@@ -55,7 +56,8 @@ class AppointmentModel {
       'date': date,
       'time': time,
       'status': status,
-      'createdAt': createdAt,
+      'queueNumber': queueNumber, // 🔥 Tambahkan ini agar nomor antrean tersimpan
+      'createdAt': createdAt ?? FieldValue.serverTimestamp(),
     };
   }
 }

@@ -1,12 +1,12 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import '/services/booking_service.dart'; // 🔥 Import service Anda
-import '/model/doctor_model.dart'; // 🔥 Import model Anda
+import '/services/booking_service.dart'; 
+import '/model/doctor_model.dart'; 
+import 'package:rumahsakitapp/routes/app_routes.dart';
 
 class BookConfirmationPage extends StatelessWidget {
-  final DoctorModel doctor; // 🔥 Gunakan objek model langsung
+  final DoctorModel doctor; 
   final String selectedDate;
   final String selectedTime;
 
@@ -104,10 +104,11 @@ class BookConfirmationPage extends StatelessWidget {
               ),
               onPressed: () {
                 // Kembali ke Dashboard dan hapus semua history page booking
-                Navigator.of(context).popUntil((route) => route.isFirst);
+                Navigator.of(context).pop();
+                Navigator.pushReplacementNamed(context, AppRoutes.queueInfo);
               },
               child: const Text(
-                "Selesai",
+                "Lihat Antrean Saya",
                 style: TextStyle(color: Colors.white),
               ),
             ),
