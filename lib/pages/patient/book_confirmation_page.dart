@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '/services/booking_service.dart'; // 🔥 Import service Anda
@@ -18,27 +19,47 @@ class BookConfirmationPage extends StatelessWidget {
 
   final BookingService _bookingService = BookingService();
 
-Future<void> _processBooking(BuildContext context) async {
+  Future<void> _processBooking(BuildContext context) async {
+    // 1. Ambil ID User yang sedang login
+    final User? currentUser = FirebaseAuth.instance.currentUser;
+
+    if (currentUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Anda harus login terlebih dahulu!")),
+      );
+      return;
+    }
+
+    // 2. Tampilkan Loading (Opsional tapi penting agar user tidak klik berkali-kali)
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
     try {
       int queueNum = await _bookingService.createAppointment(
         doctor: doctor,
         selectedDate: selectedDate,
         selectedTime: selectedTime,
-        userId: "",
+        userId: currentUser.uid,
       );
 
-      if (context.mounted) _showSuccessDialog(context, queueNum); // 🔥 Kirim nomor antrean
+      if (context.mounted) {
+        Navigator.pop(context); // Tutup loading
+        _showSuccessDialog(context, queueNum);
+      }
     } catch (e) {
       if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString())),
-      );
+        Navigator.pop(context); // Tutup loading
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Gagal: ${e.toString()}")));
+      }
     }
   }
 
-}
-
-void _showSuccessDialog(BuildContext context, int queueNumber) {
+  void _showSuccessDialog(BuildContext context, int queueNumber) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -49,22 +70,52 @@ void _showSuccessDialog(BuildContext context, int queueNumber) {
           children: [
             const Icon(LucideIcons.checkCircle, color: Colors.green, size: 50),
             const SizedBox(height: 16),
-            const Text("Booking Berhasil!", style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text(
+              "Booking Berhasil!",
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
             const SizedBox(height: 20),
             const Text("Nomor Antrean Anda:"),
             Text(
-              queueNumber.toString().padLeft(3, '0'), // Contoh: 001
-              style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold, color: Color(0xFF3F6DF6)),
+              queueNumber.toString().padLeft(3, '0'),
+              style: const TextStyle(
+                fontSize: 48,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF3F6DF6),
+              ),
             ),
             const SizedBox(height: 10),
-            const Text("Tunjukkan nomor ini saat tiba di RS.", textAlign: TextAlign.center, style: TextStyle(fontSize: 12)),
+            const Text(
+              "Tunjukkan nomor ini saat tiba di RS.",
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
           ],
         ),
-        actions: [ /* Tombol OK */ ],
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF3F6DF6),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              onPressed: () {
+                // Kembali ke Dashboard dan hapus semua history page booking
+                Navigator.of(context).popUntil((route) => route.isFirst);
+              },
+              child: const Text(
+                "Selesai",
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -282,6 +333,4 @@ void _showSuccessDialog(BuildContext context, int queueNumber) {
       ],
     );
   }
-
-  
 }

@@ -5,27 +5,31 @@ import '/model/bookings_model.dart';
 class BookingService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  /// Fungsi untuk menyimpan pendaftaran janji temu ke Firestore
   Future<int> createAppointment({
     required DoctorModel doctor,
     required String selectedDate,
     required String selectedTime,
     required String userId,
   }) async {
-    try {
-      // 1. Cari jumlah antrean yang sudah ada untuk dokter & waktu tersebut
-      final existingBookings = await _db
-          .collection('bookings')
-          .where('doctorId', isEqualTo: doctor.id)
-          .where('date', isEqualTo: selectedDate)
-          .where('time', isEqualTo: selectedTime)
-          .get();
+    // Reference ke dokumen counter spesifik dokter dan tanggal tersebut
+    // Format ID: dokterID_tanggal (Contoh: dr123_2026-01-29)
+    DocumentReference counterRef = _db.collection('counters').doc('${doctor.id}_$selectedDate');
+    
+    return _db.runTransaction((transaction) async {
+      DocumentSnapshot counterSnapshot = await transaction.get(counterRef);
 
-      // 2. Nomor antrean adalah jumlah data yang ada + 1
-      int nextQueueNumber = existingBookings.docs.length + 1;
+      int nextQueueNumber;
+      if (!counterSnapshot.exists) {
+        nextQueueNumber = 1;
+        transaction.set(counterRef, {'lastNumber': 1});
+      } else {
+        nextQueueNumber = (counterSnapshot.data() as Map<String, dynamic>)['lastNumber'] + 1;
+        transaction.update(counterRef, {'lastNumber': nextQueueNumber});
+      }
 
-      // 3. Simpan data pendaftaran
-      await _db.collection('bookings').add({
+      // Simpan data booking
+      DocumentReference bookingRef = _db.collection('bookings').doc();
+      transaction.set(bookingRef, {
         'doctorId': doctor.id,
         'doctorName': doctor.nama,
         'poli': doctor.poli,
@@ -33,32 +37,26 @@ class BookingService {
         'userId': userId,
         'date': selectedDate,
         'time': selectedTime,
-        'queueNumber': nextQueueNumber, // 🔥 Simpan nomor antrean
+        'queueNumber': nextQueueNumber,
         'status': 'pending',
+        'status_pembayaran': 'belum_bayar',
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-      return nextQueueNumber; // Kembalikan nomor antrean untuk ditampilkan di UI
-    } catch (e) {
-      throw Exception("Gagal mendapatkan nomor antrean: $e");
-    }
+      return nextQueueNumber;
+    });
   }
 
-  /// Fungsi opsional: Mengambil daftar janji temu milik user tertentu
-  Stream<QuerySnapshot> getUserAppointments(String userId) {
-    return _db
-        .collection('bookings')
-        .where('userId', isEqualTo: userId)
-        .orderBy('createdAt', descending: true)
-        .snapshots();
-  }
+  // --- LOGIC UNTUK DOKTER ---
 
-  
-  Stream<List<AppointmentModel>> streamUserAppointments(String userId) {
+  /// Stream antrean untuk dokter secara real-time
+  Stream<List<AppointmentModel>> streamDoctorQueue(String doctorId, String date) {
     return _db
         .collection('bookings')
-        .where('userId', isEqualTo: userId)
-        .orderBy('createdAt', descending: true)
+        .where('doctorId', isEqualTo: doctorId)
+        .where('date', isEqualTo: date)
+        .where('status', isEqualTo: 'pending') // Hanya pasien yang mengantre
+        .orderBy('queueNumber', descending: false) // Urutkan 1, 2, 3...
         .snapshots()
         .map((snapshot) => snapshot.docs
             .map((doc) => AppointmentModel.fromMap(doc.data(), doc.id))
