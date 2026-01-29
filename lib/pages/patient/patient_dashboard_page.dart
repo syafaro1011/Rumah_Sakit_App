@@ -12,7 +12,11 @@ class PatientDashboardPage extends StatefulWidget {
 
 class _PatientDashboardPageState extends State<PatientDashboardPage> {
   final DashboardPatientService _dashboardService = DashboardPatientService();
+<<<<<<< HEAD
+  final int _currentIndex = 0;
+=======
   final _currentIndex = 0;
+>>>>>>> b4ce9c2798b5688d176a73ef11a0f91679f7d934
 
   @override
   Widget build(BuildContext context) {
