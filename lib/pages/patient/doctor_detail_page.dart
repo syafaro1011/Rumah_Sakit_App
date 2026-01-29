@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '/model/doctor_model.dart';
+import 'book_confirmation_page.dart';
 
 class DoctorDetailPage extends StatefulWidget {
   final String name;
@@ -310,6 +311,10 @@ Widget _statCard(IconData icon, String label, String value) {
                       'Memproses janji temu: ${availableDates[selectedDateIndex].day} pada $selectedTime',
                     ),
                   ),
+                );
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const BookConfirmationPage()),
                 );
               },
         style: ElevatedButton.styleFrom(

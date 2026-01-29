@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
-class DoctorConfirmationPage extends StatelessWidget {
-  const DoctorConfirmationPage({super.key});
+class BookConfirmationPage extends StatelessWidget {
+  const BookConfirmationPage({super.key});
 
   @override
   Widget build(BuildContext context) {
