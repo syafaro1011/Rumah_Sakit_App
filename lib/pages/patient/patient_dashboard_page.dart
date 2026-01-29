@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:rumahsakitapp/routes/app_routes.dart';
 import 'package:rumahsakitapp/services/dashboard_patient_service.dart';
+import '../widgets/patient_bottom_nav.dart';
 
 class PatientDashboardPage extends StatefulWidget {
   const PatientDashboardPage({super.key});
@@ -12,7 +13,6 @@ class PatientDashboardPage extends StatefulWidget {
 
 class _PatientDashboardPageState extends State<PatientDashboardPage> {
   final DashboardPatientService _dashboardService = DashboardPatientService();
-  final int _currentIndex = 0;
 
   void _handleLogout() async {
     await _dashboardService.signOut();
@@ -23,7 +23,7 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      bottomNavigationBar: _bottomNav(context),
+      bottomNavigationBar: const PatientBottomNav(currentIndex: 0),
       floatingActionButton: FloatingActionButton(
         backgroundColor: const Color(0xFF3F6DF6),
         onPressed: () {
@@ -316,29 +316,6 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
                 ),
                 Text(subtitle, style: const TextStyle(color: Colors.grey)),
               ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _bottomNav(BuildContext context) {
-    return BottomAppBar(
-      shape: const CircularNotchedRectangle(),
-      notchMargin: 8,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Icon(
-              Icons.home_outlined,
-              color: _currentIndex == 0 ? const Color(0xFF3F6DF6) : Colors.grey,
-            ),
-            Icon(
-              Icons.person_outline,
-              color: _currentIndex == 1 ? const Color(0xFF3F6DF6) : Colors.grey,
             ),
           ],
         ),

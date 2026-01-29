@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'doctor_list_page.dart';
+import '../widgets/patient_bottom_nav.dart';
 
 class PilihPoliPage extends StatelessWidget {
   const PilihPoliPage({super.key});
 
-  // Data statis untuk UI (Icon dan Warna)
   static final List<Map<String, dynamic>> poliList = [
     {
       'name': 'Poli Umum',
@@ -42,6 +42,8 @@ class PilihPoliPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+      bottomNavigationBar: const PatientBottomNav(currentIndex: 0),
+
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
@@ -59,7 +61,7 @@ class PilihPoliPage extends StatelessWidget {
           ),
         ),
       ),
-      // Menggunakan ListView agar bisa scroll jika jumlah poli bertambah banyak
+
       body: ListView.builder(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         itemCount: poliList.length,
@@ -73,7 +75,6 @@ class PilihPoliPage extends StatelessWidget {
           );
         },
       ),
-      bottomNavigationBar: _bottomNav(),
     );
   }
 
@@ -106,10 +107,7 @@ class PilihPoliPage extends StatelessWidget {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => DoctorListPage(
-                  // 🔥 DISESUAIKAN: Parameter di DoctorListPage adalah 'poliName'
-                  poliName: title,
-                ),
+                builder: (_) => DoctorListPage(poliName: title),
               ),
             );
           },
@@ -124,7 +122,7 @@ class PilihPoliPage extends StatelessWidget {
                     color: bgColor,
                     borderRadius: BorderRadius.circular(14),
                   ),
-                  child: Icon(icon, size: 26, color: Colors.black87),
+                  child: Icon(icon, size: 26),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -146,23 +144,6 @@ class PilihPoliPage extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _bottomNav() {
-    return BottomNavigationBar(
-      showSelectedLabels: false,
-      showUnselectedLabels: false,
-      selectedItemColor: const Color(0xFF3F6DF6),
-      unselectedItemColor: Colors.grey,
-      items: const [
-        BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: 'Home'),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.calendar_month),
-          label: 'Jadwal',
-        ),
-        BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),
-      ],
     );
   }
 }

@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import '../widgets/patient_bottom_nav.dart';
+import 'edit_patient_profile_page.dart';
+import '../login_page.dart';
 
 class PatientProfilePage extends StatelessWidget {
   const PatientProfilePage({super.key});
@@ -6,6 +9,7 @@ class PatientProfilePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      bottomNavigationBar: const PatientBottomNav(currentIndex: 1),
       appBar: AppBar(
         title: const Text('Profil Saya'),
         backgroundColor: Colors.white,
@@ -73,7 +77,12 @@ class PatientProfilePage extends StatelessWidget {
                   ),
                 ),
                 onPressed: () {
-                  // TODO: navigate ke Edit Profile
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const EditPatientProfilePage(),
+                    ),
+                  );
                 },
                 icon: const Icon(Icons.edit),
                 label: const Text('Edit Profile'),
@@ -91,7 +100,11 @@ class PatientProfilePage extends StatelessWidget {
                   ),
                 ),
                 onPressed: () {
-                  // TODO: logout
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (_) => const LoginPage()),
+                    (route) => false,
+                  );
                 },
                 icon: const Icon(Icons.power_settings_new),
                 label: const Text('Sign Out'),
