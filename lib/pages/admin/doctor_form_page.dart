@@ -1,6 +1,4 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import '/model/doctor_model.dart';
 import 'package:rumahsakitapp/services/admin_service.dart';
 
@@ -14,129 +12,17 @@ class DoctorFormPage extends StatefulWidget {
 }
 
 class _DoctorFormPageState extends State<DoctorFormPage> {
-  File? _imageFile; // Untuk menampung file foto yang dipilih
-  final ImagePicker _picker = ImagePicker();
-
-  void _submit() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(child: CircularProgressIndicator()),
-    );
-
-    try {
-      final adminService = AdminService();
-      // Ambil URL lama sebagai cadangan agar tidak null jika tidak ganti foto
-      String? finalPhotoUrl = widget.initialDoctor?.photoUrl;
-
-      if (isEdit) {
-        String uid = widget.initialDoctor!.id;
-
-        // 1. Jika ada file baru, upload dan ambil URL barunya
-        if (_imageFile != null) {
-          finalPhotoUrl = await adminService.uploadDoctorPhoto(
-            uid,
-            _imageFile!,
-          );
-        }
-
-        // 2. Update data ke Firestore
-        await adminService.updateDoctor(uid, {
-          'nama': nameController.text,
-          'poli': selectedSpecialist,
-          'experience': experienceController.text,
-          'no_hp': phoneController.text,
-          'no_SIP': sipController.text,
-          'photoUrl': finalPhotoUrl, // Mengirim URL (baik lama maupun baru)
-        });
-
-        // 3. Update Jadwal (Sub-collection)
-        await adminService.deleteAllJadwal(uid);
-        for (var s in schedules) {
-          await adminService.createJadwalDokter(
-            dokterId: uid,
-            hari: s.day,
-            jamMulai:
-                '${s.start.hour}:${s.start.minute.toString().padLeft(2, '0')}',
-            jamSelesai:
-                '${s.end.hour}:${s.end.minute.toString().padLeft(2, '0')}',
-          );
-        }
-      } else {
-        // Logika TAMBAH BARU (Create)
-        final newDoctor = DoctorModel(
-          id: '',
-          nama: nameController.text,
-          poli: selectedSpecialist!,
-          sip: sipController.text,
-          email: emailController.text,
-          password: passwordController.text,
-          phone: phoneController.text,
-          experience: experienceController.text,
-          isActive: true,
-          schedules: schedules,
-          photoUrl: '', // Akan diisi di dalam createDoctor setelah upload
-        );
-
-        await adminService.createDoctor(newDoctor, _imageFile);
-      }
-
-      if (mounted) {
-        Navigator.pop(context);
-        Navigator.pop(context, true);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Data berhasil disimpan')));
-      }
-    } catch (e) {
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Gagal: ${e.toString()}')));
-      }
-    }
-  }
-
-  // OPTIMASI: Password Field khusus agar tidak wajib diisi saat Edit
-  Widget _passwordField() {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: TextFormField(
-        controller: passwordController,
-        obscureText: true,
-        validator: (v) =>
-            (!isEdit && (v == null || v.isEmpty)) ? 'Wajib diisi' : null,
-        decoration: InputDecoration(
-          labelText: isEdit
-              ? 'Password Baru (Kosongkan jika tidak ganti)'
-              : 'Password *',
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-        ),
-      ),
-    );
-  }
-
-  // Fungsi untuk mengambil foto
-  Future<void> _pickImage() async {
-    final XFile? selected = await _picker.pickImage(
-      source: ImageSource.gallery, // Bisa diganti ImageSource.camera
-      imageQuality: 50, // Kompres agar upload lebih cepat
-    );
-    if (selected != null) {
-      setState(() => _imageFile = File(selected.path));
-    }
-  }
-
   final _formKey = GlobalKey<FormState>();
+
+  // Controller untuk input teks
   late TextEditingController nameController;
   late TextEditingController experienceController;
   late TextEditingController emailController;
   late TextEditingController passwordController;
   late TextEditingController sipController;
   late TextEditingController phoneController;
+  late TextEditingController
+  photoUrlController; // Controller baru untuk link gambar
 
   String? selectedSpecialist;
   late List<DoctorSchedule> schedules;
@@ -164,7 +50,6 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
   @override
   void initState() {
     super.initState();
-
     final d = widget.initialDoctor;
 
     nameController = TextEditingController(text: d?.nama);
@@ -173,9 +58,87 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
     passwordController = TextEditingController(text: d?.password);
     sipController = TextEditingController(text: d?.sip);
     phoneController = TextEditingController(text: d?.phone);
+    photoUrlController = TextEditingController(
+      text: d?.photoUrl,
+    ); // Inisialisasi URL
 
     selectedSpecialist = d?.poli;
     schedules = d != null ? List.from(d.schedules) : [];
+  }
+
+  void _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final adminService = AdminService();
+
+      if (isEdit) {
+        String uid = widget.initialDoctor!.id;
+
+        // 1. Update data langsung ke Firestore (Menggunakan link dari controller)
+        await adminService.updateDoctor(uid, {
+          'nama': nameController.text,
+          'poli': selectedSpecialist,
+          'experience': experienceController.text,
+          'no_hp': phoneController.text,
+          'no_SIP': sipController.text,
+          'photoUrl': photoUrlController.text,
+        });
+
+        // 2. Update Jadwal
+        await adminService.deleteAllJadwal(uid);
+        for (var s in schedules) {
+          await adminService.createJadwalDokter(
+            dokterId: uid,
+            hari: s.day,
+            jamMulai:
+                '${s.start.hour.toString().padLeft(2, '0')}:${s.start.minute.toString().padLeft(2, '0')}',
+            jamSelesai:
+                '${s.end.hour.toString().padLeft(2, '0')}:${s.end.minute.toString().padLeft(2, '0')}',
+          );
+        }
+      } else {
+        // Logika TAMBAH BARU
+        final newDoctor = DoctorModel(
+          id: '',
+          nama: nameController.text,
+          poli: selectedSpecialist!,
+          sip: sipController.text,
+          email: emailController.text,
+          password: passwordController.text,
+          phone: phoneController.text,
+          experience: experienceController.text,
+          isActive: true,
+          schedules: schedules,
+          photoUrl: photoUrlController.text, // Mengambil link dari input
+        );
+
+        await adminService.createDoctor(
+          newDoctor,
+        ); // Sekarang hanya butuh 1 parameter
+      }
+
+      if (mounted) {
+        Navigator.pop(context); // Tutup Loading
+        Navigator.pop(context, true); // Kembali ke list
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Data berhasil disimpan')));
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Gagal: ${e.toString()}')));
+      }
+    }
   }
 
   @override
@@ -194,7 +157,7 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
             children: [
               _title(),
               const SizedBox(height: 20),
-
+              _imagePreviewWidget(), // Preview Gambar
               _field('Nama Lengkap *', nameController),
               _dropdown(),
               _field('Pengalaman', experienceController, hint: '10 Tahun'),
@@ -202,7 +165,11 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
               _passwordField(),
               _field('SIP *', sipController),
               _field('Nomor Telepon *', phoneController),
-              _imagePickerWidget(),
+              _field(
+                'Link Foto (URL)',
+                photoUrlController,
+                hint: 'https://link-gambar.com/foto.jpg',
+              ),
 
               const SizedBox(height: 24),
               _scheduleHeader(),
@@ -217,33 +184,94 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
     );
   }
 
-  // ================= UI =================
+  // ================= UI COMPONENTS =================
 
-  Widget _title() => Text(
-    isEdit ? 'Edit Data Dokter' : 'Input Data Dokter',
-    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-  );
+  Widget _imagePreviewWidget() {
+    return Center(
+      child: Container(
+        width: 120,
+        height: 120,
+        margin: const EdgeInsets.only(bottom: 20),
+        decoration: BoxDecoration(
+          color: Colors.grey[200],
+          shape: BoxShape.circle,
+          border: Border.all(color: const Color(0xFF3F6DF6), width: 3),
+        ),
+        child: ClipOval(
+          child: ValueListenableBuilder(
+            valueListenable: photoUrlController,
+            builder: (context, value, child) {
+              final url = photoUrlController.text;
+              if (url.isEmpty) {
+                return const Icon(
+                  Icons.person,
+                  size: 60,
+                  color: Color(0xFF3F6DF6),
+                );
+              }
+              return Image.network(
+                url,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) =>
+                    const Icon(Icons.broken_image, size: 50, color: Colors.red),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
 
   Widget _field(String label, TextEditingController c, {String? hint}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: TextFormField(
         controller: c,
-        validator: (v) => v == null || v.isEmpty ? 'Wajib diisi' : null,
+        validator: (v) => (label.contains('*') && (v == null || v.isEmpty))
+            ? 'Wajib diisi'
+            : null,
         decoration: InputDecoration(
           labelText: label,
           hintText: hint,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+        ),
+        onChanged: (v) {
+          if (c == photoUrlController)
+            setState(() {}); // Refresh preview khusus untuk URL
+        },
+      ),
+    );
+  }
+
+  Widget _passwordField() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: TextFormField(
+        controller: passwordController,
+        obscureText: true,
+        validator: (v) =>
+            (!isEdit && (v == null || v.isEmpty)) ? 'Wajib diisi' : null,
+        decoration: InputDecoration(
+          labelText: isEdit ? 'Password Baru (Opsional)' : 'Password *',
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
         ),
       ),
     );
   }
 
+  // ... (Widget _title, _dropdown, _scheduleHeader, _scheduleList, _time, _submitButton, _addSchedule tetap sama dengan sebelumnya)
+  // [Kode di bawah ini disingkat untuk efisiensi, gunakan implementasi sebelumnya]
+
+  Widget _title() => Text(
+    isEdit ? 'Edit Data Dokter' : 'Input Data Dokter',
+    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+  );
+
   Widget _dropdown() {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: DropdownButtonFormField<String>(
-        initialValue: selectedSpecialist,
+        value: selectedSpecialist,
         items: specialists
             .map((e) => DropdownMenuItem(value: e, child: Text(e)))
             .toList(),
@@ -336,45 +364,11 @@ class _DoctorFormPageState extends State<DoctorFormPage> {
         onPressed: _submit,
         child: Text(
           isEdit ? 'Simpan Perubahan' : 'Tambah Dokter',
-          style: const TextStyle(fontSize: 16),
+          style: const TextStyle(fontSize: 16, color: Colors.white),
         ),
       ),
     );
   }
-
-  Widget _imagePickerWidget() {
-    return Center(
-      child: GestureDetector(
-        onTap: _pickImage,
-        child: Container(
-          width: 100,
-          height: 100,
-          margin: const EdgeInsets.only(bottom: 20),
-          decoration: BoxDecoration(
-            color: Colors.grey[200],
-            shape: BoxShape.circle,
-            border: Border.all(color: const Color(0xFF3F6DF6), width: 2),
-            image: _imageFile != null
-                ? DecorationImage(
-                    image: FileImage(_imageFile!),
-                    fit: BoxFit.cover,
-                  )
-                : (widget.initialDoctor?.photoUrl != null
-                      ? DecorationImage(
-                          image: NetworkImage(widget.initialDoctor!.photoUrl!),
-                          fit: BoxFit.cover,
-                        )
-                      : null),
-          ),
-          child: _imageFile == null && widget.initialDoctor?.photoUrl == null
-              ? const Icon(Icons.camera_alt, size: 40, color: Color(0xFF3F6DF6))
-              : null,
-        ),
-      ),
-    );
-  }
-
-  // ================= LOGIC =================
 
   void _addSchedule() {
     setState(() {

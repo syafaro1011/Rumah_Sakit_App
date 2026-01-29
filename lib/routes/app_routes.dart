@@ -11,7 +11,11 @@ import 'package:rumahsakitapp/model/doctor_model.dart';
 import '../pages/patient/queue_info_page.dart';
 import '../pages/patient/medical_record_page.dart';
 import '../pages/patient/patient_profile_page.dart';
+<<<<<<< HEAD
 import '../pages/doctor/rekam_medis_page.dart';
+=======
+import '../pages/patient/doctor_confirmation_page.dart';
+>>>>>>> b4ce9c2798b5688d176a73ef11a0f91679f7d934
 
 class AppRoutes {
   static const String login = '/login';
@@ -25,7 +29,11 @@ class AppRoutes {
   static const String queueInfo = '/patient/queue-info-page';
   static const String medicalRecord = '/patient/medical-record-page';
   static const String patientProfile = '/patient/patient-profile-page';
+<<<<<<< HEAD
   static const String rekamMedis = '/doctor/rekam-medis-page';
+=======
+  static const String doctorConfirmation = '/patient/doctor-confirmation-page';
+>>>>>>> b4ce9c2798b5688d176a73ef11a0f91679f7d934
 
   // Map yang berisi daftar rute
   static Map<String, WidgetBuilder> getRoutes() {
@@ -46,6 +54,7 @@ class AppRoutes {
       queueInfo: (context) => const QueueInfoPage(),
       medicalRecord: (context) => const MedicalRecordPage(),
       patientProfile: (context) => const PatientProfilePage(),
+      doctorConfirmation: (context) => const DoctorConfirmationPage(),
     };
   }
 }
