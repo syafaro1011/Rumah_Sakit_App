@@ -6,19 +6,25 @@ class DashboardPatientService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
   Future<DocumentSnapshot> getUserProfile() async {
-    return _db.collection('users').doc(_auth.currentUser!.uid).get();
+    String? uid = _auth.currentUser?.uid;
+    if (uid == null) throw Exception("User not logged in");
+    return _db.collection('users').doc(uid).get();
   }
 
+  /// Mengambil booking aktif terbaru hari ini
   Stream<QuerySnapshot> getTodayBooking() {
-  String uid = _auth.currentUser!.uid;
+    String uid = _auth.currentUser!.uid;
 
-  return _db
-      .collection('bookings')
-      .where('pasien_id', isEqualTo: uid) // ✅ sesuai booking
-      .where('status', isEqualTo: 'menunggu') // ✅ sesuai booking
-      .orderBy('waktu_booking', descending: true)
-      .limit(1)
-      .snapshots();
-}
+    return _db
+        .collection('bookings')
+        .where('userId', isEqualTo: uid) // 🔥 Disamakan dengan createAppointment
+        .where('status', isEqualTo: 'pending') 
+        .limit(1)
+        .snapshots();
+  }
 
+  /// Fungsi untuk logout
+  Future<void> signOut() async {
+    await _auth.signOut();
+  }
 }

@@ -14,6 +14,11 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
   final DashboardPatientService _dashboardService = DashboardPatientService();
   final int _currentIndex = 0;
 
+  void _handleLogout() async {
+    await _dashboardService.signOut();
+    if (mounted) Navigator.pushReplacementNamed(context, AppRoutes.login);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -85,7 +90,7 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Welcome Back, $nama!',
+              'Halo, $nama',
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 6),
@@ -104,14 +109,23 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
     return StreamBuilder<QuerySnapshot>(
       stream: _dashboardService.getTodayBooking(),
       builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
           return _emptyBookingCard();
         }
 
-        final data = snapshot.data!.docs.first.data() as Map<String, dynamic>;
-        final waktu = (data['waktu_booking'] as Timestamp).toDate();
+        final doc = snapshot.data!.docs.first;
+        final data = doc.data() as Map<String, dynamic>;
+
+        // Handle format tanggal yang aman
+        String formattedDate = data['date'] ?? '-';
+        String formattedTime = data['time'] ?? '-';
 
         return Container(
+          width: double.infinity,
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
@@ -128,8 +142,8 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Praktik Hari Ini',
-                style: TextStyle(fontWeight: FontWeight.w600),
+                'Jadwal Terdekat',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
               const SizedBox(height: 12),
               Container(
@@ -139,29 +153,89 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      '${data['nama_dokter']} - ${data['poli']}',
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      '${waktu.day}-${waktu.month}-${waktu.year} | '
-                      '${waktu.hour.toString().padLeft(2, '0')}:${waktu.minute.toString().padLeft(2, '0')}',
-                      style: const TextStyle(color: Colors.grey),
+                    Row(
+                      children: [
+                        CircleAvatar(
+                          backgroundColor: Colors.white,
+                          backgroundImage:
+                              (data['photoUrl'] != null &&
+                                  data['photoUrl'] != '')
+                              ? NetworkImage(data['photoUrl'])
+                              : null,
+                          child:
+                              (data['photoUrl'] == null ||
+                                  data['photoUrl'] == '')
+                              ? const Icon(Icons.person)
+                              : null,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                data['doctorName'] ?? 'Dokter',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                data['poli'] ?? 'Umum',
+                                style: const TextStyle(
+                                  color: Colors.blueAccent,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                     const Divider(height: 24),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Nomor Antrian'),
-                        Text(
-                          data['nomor_antrean'].toString(),
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF3F6DF6),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.calendar_month,
+                              size: 16,
+                              color: Colors.grey,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              formattedDate,
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                            const SizedBox(width: 12),
+                            const Icon(
+                              Icons.access_time,
+                              size: 16,
+                              color: Colors.grey,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              formattedTime,
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          ],
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '#${(data['queueNumber'] ?? 0).toString().padLeft(3, '0')}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF3F6DF6),
+                            ),
                           ),
                         ),
                       ],
