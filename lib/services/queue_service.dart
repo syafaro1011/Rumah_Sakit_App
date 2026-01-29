@@ -7,14 +7,14 @@ class QueueService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   // Mendapatkan data booking aktif milik user
-  Stream<List<AppointmentModel>> getMyActiveBooking() {
+  Stream<List<BookingsModel>> getMyActiveBooking() {
   return _db
       .collection('bookings')
       .where('userId', isEqualTo: _auth.currentUser?.uid)
       .where('status', isEqualTo: 'pending')
       .snapshots()
       .map((snapshot) => snapshot.docs
-          .map((doc) => AppointmentModel.fromMap(doc.data() as Map<String, dynamic>, doc.id))
+          .map((doc) => BookingsModel.fromMap(doc.data() as Map<String, dynamic>, doc.id))
           .toList());
 }
   

@@ -69,7 +69,7 @@ class BookingService {
   // --- LOGIC UNTUK DOKTER ---
 
   /// Stream antrean untuk dokter secara real-time
-  Stream<List<AppointmentModel>> streamDoctorQueue(
+  Stream<List<BookingsModel>> streamDoctorQueue(
     String doctorId,
     String date,
   ) {
@@ -82,7 +82,7 @@ class BookingService {
         .snapshots()
         .map(
           (snapshot) => snapshot.docs
-              .map((doc) => AppointmentModel.fromMap(doc.data(), doc.id))
+              .map((doc) => BookingsModel.fromMap(doc.data(), doc.id))
               .toList(),
         );
   }

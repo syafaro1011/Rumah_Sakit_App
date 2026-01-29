@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-class AppointmentModel {
+class BookingsModel {
   final String id;
   final String doctorId;
   final String doctorName;
@@ -13,7 +13,7 @@ class AppointmentModel {
   final int queueNumber;
   final DateTime? createdAt; // Dibuat nullable agar tidak error saat data baru dikirim
 
-  AppointmentModel({
+  BookingsModel({
     required this.id,
     required this.doctorId,
     required this.doctorName,
@@ -27,8 +27,8 @@ class AppointmentModel {
     this.createdAt,
   });
 
-  factory AppointmentModel.fromMap(Map<String, dynamic> map, String documentId) {
-    return AppointmentModel(
+  factory BookingsModel.fromMap(Map<String, dynamic> map, String documentId) {
+    return BookingsModel(
       id: documentId,
       doctorId: map['doctorId'] ?? '',
       doctorName: map['doctorName'] ?? '',
