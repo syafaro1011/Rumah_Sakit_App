@@ -25,11 +25,7 @@ class AppRoutes {
   static const String queueInfo = '/patient/queue-info-page';
   static const String medicalRecord = '/patient/medical-record-page';
   static const String patientProfile = '/patient/patient-profile-page';
-<<<<<<< HEAD
   static const String rekamMedis = '/doctor/rekam-medis-page';
-=======
-  static const String doctorConfirmation = '/patient/doctor-confirmation-page';
->>>>>>> b4ce9c2798b5688d176a73ef11a0f91679f7d934
 
   // Map yang berisi daftar rute
   static Map<String, WidgetBuilder> getRoutes() {
@@ -41,7 +37,7 @@ class AppRoutes {
       doctorDashboard: (context) => const DoctorDashboardPage(), 
       adminDashboard: (context) => const AdminDashboardPage(),
       manageDoctor: (context) => const ManageDoctorPage(),
-      rekamMedis: (context) => const RekamMedisPage(),
+      // rekamMedis: (context) => const RekamMedisPage(),
       doctorProfile: (context) {
         final doctor =
             ModalRoute.of(context)!.settings.arguments as DoctorModel;
