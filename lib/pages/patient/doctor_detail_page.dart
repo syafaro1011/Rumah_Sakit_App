@@ -75,7 +75,7 @@ class _DoctorDetailPageState extends State<DoctorDetailPage> {
                 const SizedBox(height: 24),
                 _timePickerSection(),
                 const SizedBox(height: 32),
-                _bookButton(),
+                _bookButton(DoctorModel.fromMap(doctorData, widget.doctorId)),
               ],
             ),
           );
@@ -296,7 +296,7 @@ Widget _statCard(IconData icon, String label, String value) {
     );
   }
 
-  Widget _bookButton() {
+  Widget _bookButton(DoctorModel doctor) {
     return SizedBox(
       width: double.infinity,
       height: 56,
@@ -304,17 +304,19 @@ Widget _statCard(IconData icon, String label, String value) {
         onPressed: selectedTime == null
             ? null
             : () {
-                // Logic Booking
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      'Memproses janji temu: ${availableDates[selectedDateIndex].day} pada $selectedTime',
-                    ),
-                  ),
-                );
+                // Ambil tanggal dalam format String (contoh: "26 Mar 2026")
+                final date = availableDates[selectedDateIndex];
+                String formattedDate = "${date.day} ${_getAbbrMonth(date.month)} ${date.year}";
+
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const BookConfirmationPage()),
+                  MaterialPageRoute(
+                    builder: (_) => BookConfirmationPage(
+                      doctor: doctor, // Objek DoctorModel lengkap
+                      selectedDate: formattedDate,
+                      selectedTime: selectedTime!, // Jam yang dipilih (String)
+                    ),
+                  ),
                 );
               },
         style: ElevatedButton.styleFrom(
@@ -323,6 +325,7 @@ Widget _statCard(IconData icon, String label, String value) {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
+          elevation: 0,
         ),
         child: const Text(
           'Buat Janji Temu Sekarang',
