@@ -12,7 +12,7 @@ class PatientDashboardPage extends StatefulWidget {
 
 class _PatientDashboardPageState extends State<PatientDashboardPage> {
   final DashboardPatientService _dashboardService = DashboardPatientService();
-  int _currentIndex = 0;
+  final _currentIndex = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -89,8 +89,10 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 6),
-            const Text('Semoga sehat selalu ya!',
-                style: TextStyle(color: Colors.grey)),
+            const Text(
+              'Semoga sehat selalu ya!',
+              style: TextStyle(color: Colors.grey),
+            ),
           ],
         ),
         const Icon(Icons.notifications_none, size: 28),
@@ -106,8 +108,7 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
           return _emptyBookingCard();
         }
 
-        final data =
-            snapshot.data!.docs.first.data() as Map<String, dynamic>;
+        final data = snapshot.data!.docs.first.data() as Map<String, dynamic>;
         final waktu = (data['waktu_booking'] as Timestamp).toDate();
 
         return Container(
@@ -126,8 +127,10 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Praktik Hari Ini',
-                  style: TextStyle(fontWeight: FontWeight.w600)),
+              const Text(
+                'Praktik Hari Ini',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
               const SizedBox(height: 12),
               Container(
                 padding: const EdgeInsets.all(16),
@@ -140,8 +143,7 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
                   children: [
                     Text(
                       '${data['nama_dokter']} - ${data['poli']}',
-                      style:
-                          const TextStyle(fontWeight: FontWeight.w600),
+                      style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(height: 6),
                     Text(
@@ -224,18 +226,21 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
             Container(
               width: 48,
               height: 48,
-              decoration:
-                  BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(12)),
+              decoration: BoxDecoration(
+                color: bgColor,
+                borderRadius: BorderRadius.circular(12),
+              ),
               child: Icon(icon),
             ),
             const SizedBox(width: 16),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title,
-                    style: const TextStyle(fontWeight: FontWeight.w600)),
-                Text(subtitle,
-                    style: const TextStyle(color: Colors.grey)),
+                Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                Text(subtitle, style: const TextStyle(color: Colors.grey)),
               ],
             ),
           ],
@@ -253,14 +258,14 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Icon(Icons.home_outlined,
-                color: _currentIndex == 0
-                    ? const Color(0xFF3F6DF6)
-                    : Colors.grey),
-            Icon(Icons.person_outline,
-                color: _currentIndex == 1
-                    ? const Color(0xFF3F6DF6)
-                    : Colors.grey),
+            Icon(
+              Icons.home_outlined,
+              color: _currentIndex == 0 ? const Color(0xFF3F6DF6) : Colors.grey,
+            ),
+            Icon(
+              Icons.person_outline,
+              color: _currentIndex == 1 ? const Color(0xFF3F6DF6) : Colors.grey,
+            ),
           ],
         ),
       ),
