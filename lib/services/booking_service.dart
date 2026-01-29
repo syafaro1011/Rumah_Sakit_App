@@ -11,10 +11,29 @@ class BookingService {
     required String selectedTime,
     required String userId,
   }) async {
-    // Reference ke dokumen counter spesifik dokter dan tanggal tersebut
-    // Format ID: dokterID_tanggal (Contoh: dr123_2026-01-29)
-    DocumentReference counterRef = _db.collection('counters').doc('${doctor.id}_$selectedDate');
-    
+    // 1. CEK APAKAH USER SUDAH DAFTAR DI DOKTER & TANGGAL YANG SAMA
+    final existingCheck = await _db
+        .collection('bookings')
+        .where('userId', isEqualTo: userId)
+        .where('doctorId', isEqualTo: doctor.id)
+        .where('date', isEqualTo: selectedDate)
+        // Kita batasi pengecekan untuk status yang masih aktif (pending/processing)
+        // Jika pasien sudah 'selesai' atau 'dibatalkan', mereka boleh daftar lagi (opsional)
+        .where('status', whereIn: ['pending', 'processing'])
+        .get();
+
+    if (existingCheck.docs.isNotEmpty) {
+      // Jika ditemukan data, lempar error agar ditangkap oleh Try-Catch di UI
+      throw Exception(
+        "Anda sudah memiliki antrean aktif untuk dokter ini di hari yang sama.",
+      );
+    }
+
+    // 2. JIKA TIDAK ADA DUPLIKASI, LANJUTKAN TRANSAKSI ANTREAN
+    DocumentReference counterRef = _db
+        .collection('counters')
+        .doc('${doctor.id}_$selectedDate');
+
     return _db.runTransaction((transaction) async {
       DocumentSnapshot counterSnapshot = await transaction.get(counterRef);
 
@@ -23,11 +42,11 @@ class BookingService {
         nextQueueNumber = 1;
         transaction.set(counterRef, {'lastNumber': 1});
       } else {
-        nextQueueNumber = (counterSnapshot.data() as Map<String, dynamic>)['lastNumber'] + 1;
+        nextQueueNumber =
+            (counterSnapshot.data() as Map<String, dynamic>)['lastNumber'] + 1;
         transaction.update(counterRef, {'lastNumber': nextQueueNumber});
       }
 
-      // Simpan data booking
       DocumentReference bookingRef = _db.collection('bookings').doc();
       transaction.set(bookingRef, {
         'doctorId': doctor.id,
@@ -50,7 +69,10 @@ class BookingService {
   // --- LOGIC UNTUK DOKTER ---
 
   /// Stream antrean untuk dokter secara real-time
-  Stream<List<AppointmentModel>> streamDoctorQueue(String doctorId, String date) {
+  Stream<List<AppointmentModel>> streamDoctorQueue(
+    String doctorId,
+    String date,
+  ) {
     return _db
         .collection('bookings')
         .where('doctorId', isEqualTo: doctorId)
@@ -58,8 +80,10 @@ class BookingService {
         .where('status', isEqualTo: 'pending') // Hanya pasien yang mengantre
         .orderBy('queueNumber', descending: false) // Urutkan 1, 2, 3...
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => AppointmentModel.fromMap(doc.data(), doc.id))
-            .toList());
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => AppointmentModel.fromMap(doc.data(), doc.id))
+              .toList(),
+        );
   }
 }
