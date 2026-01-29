@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'doctor_confirmation_page.dart';
 
 class DoctorDetailPage extends StatelessWidget {
   final String doctorId;
@@ -31,10 +32,9 @@ class DoctorDetailPage extends StatelessWidget {
             CircleAvatar(
               radius: 40,
               backgroundColor: const Color(0xFFEAF1FF),
-              backgroundImage:
-                  (photoUrl != null && photoUrl!.isNotEmpty)
-                      ? NetworkImage(photoUrl!)
-                      : null,
+              backgroundImage: (photoUrl != null && photoUrl!.isNotEmpty)
+                  ? NetworkImage(photoUrl!)
+                  : null,
               child: (photoUrl == null || photoUrl!.isEmpty)
                   ? const Icon(Icons.person, size: 40, color: Colors.blue)
                   : null,
@@ -42,15 +42,20 @@ class DoctorDetailPage extends StatelessWidget {
             const SizedBox(height: 16),
             Text(
               name,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 4),
-            Text(
-              'Poli $poli',
-              style: const TextStyle(color: Colors.grey),
+            Text('$poli', style: const TextStyle(color: Colors.grey)),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const DoctorConfirmationPage(),
+                  ),
+                );
+              },
+              child: const Text("Booking Praktik"),
             ),
           ],
         ),
