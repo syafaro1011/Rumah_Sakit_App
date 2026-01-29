@@ -14,7 +14,7 @@ class BookingService {
   }) async {
     try {
       // 1. Cari jumlah antrean yang sudah ada untuk dokter & waktu tersebut
-      final existingAppointments = await _db
+      final existingBookings = await _db
           .collection('bookings')
           .where('doctorId', isEqualTo: doctor.id)
           .where('date', isEqualTo: selectedDate)
@@ -22,7 +22,7 @@ class BookingService {
           .get();
 
       // 2. Nomor antrean adalah jumlah data yang ada + 1
-      int nextQueueNumber = existingAppointments.docs.length + 1;
+      int nextQueueNumber = existingBookings.docs.length + 1;
 
       // 3. Simpan data pendaftaran
       await _db.collection('bookings').add({
