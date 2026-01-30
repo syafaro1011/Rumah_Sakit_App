@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/auth_service.dart';
 import '../../routes/app_routes.dart';
 import 'edit_profile_page.dart'; // Pastikan import ini ada
+import '../widgets/admin_bottom_nav.dart';
 
 class AdminProfilePage extends StatelessWidget {
   final VoidCallback onSecurityTap;
@@ -21,8 +22,13 @@ class AdminProfilePage extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA), // Background abu muda halus
+      bottomNavigationBar: const AdminBottomNav(currentIndex: 2),
+
       appBar: AppBar(
-        title: const Text('Profil Saya', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Profil Saya',
+          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+        ),
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
@@ -51,8 +57,16 @@ class AdminProfilePage extends StatelessWidget {
                 _buildInfoCard(
                   title: "Informasi Akun",
                   items: [
-                    _infoItem(Icons.badge_outlined, "Role Access", userData?['role']?.toUpperCase() ?? "ADMIN"),
-                    _infoItem(Icons.email_outlined, "Email Terdaftar", userData?['email'] ?? user?.email ?? "-"),
+                    _infoItem(
+                      Icons.badge_outlined,
+                      "Role Access",
+                      userData?['role']?.toUpperCase() ?? "ADMIN",
+                    ),
+                    _infoItem(
+                      Icons.email_outlined,
+                      "Email Terdaftar",
+                      userData?['email'] ?? user?.email ?? "-",
+                    ),
                   ],
                 ),
                 const SizedBox(height: 20),
@@ -61,8 +75,16 @@ class AdminProfilePage extends StatelessWidget {
                 _buildInfoCard(
                   title: "Pengaturan & Bantuan",
                   items: [
-                    _menuItem(Icons.shield_outlined, "Keamanan Akun", onSecurityTap),
-                    _menuItem(Icons.info_outline, "Tentang Aplikasi", onAboutTap),
+                    _menuItem(
+                      Icons.shield_outlined,
+                      "Keamanan Akun",
+                      onSecurityTap,
+                    ),
+                    _menuItem(
+                      Icons.info_outline,
+                      "Tentang Aplikasi",
+                      onAboutTap,
+                    ),
                   ],
                 ),
                 const SizedBox(height: 30),
@@ -78,7 +100,8 @@ class AdminProfilePage extends StatelessWidget {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => EditProfilePage(userData: userData),
+                          builder: (context) =>
+                              EditProfilePage(userData: userData),
                         ),
                       );
                     }
@@ -109,7 +132,9 @@ class AdminProfilePage extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10),
+        ],
       ),
       child: Column(
         children: [
@@ -119,7 +144,10 @@ class AdminProfilePage extends StatelessWidget {
             child: Icon(Icons.person, size: 50, color: Color(0xFF3F6DF6)),
           ),
           const SizedBox(height: 16),
-          Text(name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          Text(
+            name,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 4),
           Text(id, style: const TextStyle(color: Colors.grey, fontSize: 13)),
         ],
@@ -134,12 +162,17 @@ class AdminProfilePage extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          Text(
+            title,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 16),
           ...items,
         ],
@@ -157,8 +190,17 @@ class AdminProfilePage extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-              Text(value, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14)),
+              Text(
+                label,
+                style: const TextStyle(color: Colors.grey, fontSize: 12),
+              ),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w500,
+                  fontSize: 14,
+                ),
+              ),
             ],
           ),
         ],
@@ -175,7 +217,10 @@ class AdminProfilePage extends StatelessWidget {
           children: [
             Icon(icon, color: Colors.blueAccent, size: 22),
             const SizedBox(width: 14),
-            Text(label, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14)),
+            Text(
+              label,
+              style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
+            ),
             const Spacer(),
             const Icon(Icons.chevron_right, color: Colors.grey, size: 18),
           ],
@@ -184,7 +229,12 @@ class AdminProfilePage extends StatelessWidget {
     );
   }
 
-  Widget _buildActionButton({required String label, required IconData icon, required Color color, required VoidCallback onTap}) {
+  Widget _buildActionButton({
+    required String label,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton.icon(
@@ -192,7 +242,9 @@ class AdminProfilePage extends StatelessWidget {
           backgroundColor: color,
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 15),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           elevation: 0,
         ),
         onPressed: onTap,
@@ -210,11 +262,19 @@ class AdminProfilePage extends StatelessWidget {
         title: const Text("Sign Out"),
         content: const Text("Apakah Anda yakin ingin keluar dari sistem?"),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Batal")),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Batal"),
+          ),
           TextButton(
             onPressed: () async {
               await AuthService().signOut();
-              if (context.mounted) Navigator.pushNamedAndRemoveUntil(context, AppRoutes.login, (route) => false);
+              if (context.mounted)
+                Navigator.pushNamedAndRemoveUntil(
+                  context,
+                  AppRoutes.login,
+                  (route) => false,
+                );
             },
             child: const Text("Keluar", style: TextStyle(color: Colors.red)),
           ),

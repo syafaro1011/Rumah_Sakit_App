@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../model/doctor_model.dart';
 import '../../services/admin_service.dart';
 import 'doctor_form_page.dart';
+import '../widgets/admin_bottom_nav.dart';
 
 class ManageDoctorPage extends StatefulWidget {
   const ManageDoctorPage({super.key});
@@ -41,6 +42,7 @@ class _ManageDoctorPageState extends State<ManageDoctorPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      bottomNavigationBar: const AdminBottomNav(currentIndex: 1),
       backgroundColor: const Color(0xFFF7F7F7),
       appBar: _buildAppBar(),
       body: Column(
@@ -259,8 +261,6 @@ class _ManageDoctorPageState extends State<ManageDoctorPage> {
       ),
     );
   }
-
-
 
   Widget _infoRow(IconData icon, String title, String value) {
     return Padding(
