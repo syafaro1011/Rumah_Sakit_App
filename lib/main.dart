@@ -12,7 +12,6 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform, // ieu tong nepi kahapus
   );
 
-  // INITIALIZE INI YANG WAJIB DITAMBAHKAN
   await initializeDateFormatting('id_ID', null).then((_) => runApp(const MyApp()));
 
   runApp(const MyApp());

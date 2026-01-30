@@ -6,9 +6,10 @@ class PatientProfileService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   Future<void> updateProfile({
-  required String name,
+  required String nama,
   required String nik,
   required String gender,
+  required String birthDate,
   required String bloodType,
   required String phone,
   required String address,
@@ -16,9 +17,10 @@ class PatientProfileService {
 }) async {
   String uid = _auth.currentUser!.uid;
   await _db.collection('users').doc(uid).update({
-    'name': name,
+    'nama': nama,
     'nik': nik,
     'gender': gender,
+    'birthDate': birthDate,
     'bloodType': bloodType,
     'phone': phone,
     'address': address,

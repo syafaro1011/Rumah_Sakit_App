@@ -50,7 +50,7 @@ class _PatientProfilePageState extends State<PatientProfilePage> {
                   title: 'Informasi Pribadi',
                   children: [
                     _infoItem(Icons.credit_card, 'NIK', data['nik'] ?? '-'),
-                    _infoItem(Icons.cake, 'Tanggal Lahir', data['dob'] ?? '-'),
+                    _infoItem(Icons.cake, 'Tanggal Lahir', data['birthDate'] ?? '-'),
                     _infoItem(Icons.person, 'Jenis Kelamin', data['gender'] ?? '-'),
                     _infoItem(Icons.bloodtype, 'Golongan Darah', data['bloodType'] ?? '-'),
                   ],

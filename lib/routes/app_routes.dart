@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rumahsakitapp/pages/doctor/rekam_medis_page.dart';
 import '../pages/login_page.dart';
 import '../pages/signup_page.dart';
 import '../pages/patient/patient_dashboard_page.dart';
@@ -40,7 +41,7 @@ class AppRoutes {
       doctorDashboard: (context) => const DoctorDashboardPage(),
       adminDashboard: (context) => const AdminDashboardPage(),
       manageDoctor: (context) => const ManageDoctorPage(),
-      // rekamMedis: (context) => const RekamMedisPage(),
+      rekamMedis: (context) => const RekamMedisPage(),
       doctorProfile: (context) {
         final doctor =
             ModalRoute.of(context)!.settings.arguments as DoctorModel;

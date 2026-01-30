@@ -42,31 +42,53 @@ class _EditPatientProfilePageState extends State<EditPatientProfilePage> {
           .collection('users')
           .doc(user.uid)
           .get();
+
       if (doc.exists) {
         final data = doc.data()!;
         setState(() {
-          nameController.text = data['name'] ?? '';
+          nameController.text = data['nama'] ?? '';
           nikController.text = data['nik'] ?? '';
-          final dob = data['dob'];
+          final dob = data['birthDate'];
           if (dob != null) {
+            DateTime? date;
             if (dob is Timestamp) {
-              final date = dob.toDate();
+              date = dob.toDate();
+            } else if (dob is String && dob.isNotEmpty) {
+              // Jika format di Firestore adalah DD-MM-YYYY
+              try {
+                List<String> parts = dob.split('-');
+                date = DateTime(
+                  int.parse(parts[2]),
+                  int.parse(parts[1]),
+                  int.parse(parts[0]),
+                );
+              } catch (e) {
+                print("Error parsing date string: $e");
+              }
+            }
+
+            if (date != null) {
               _selectedBirthDate = date;
               birthDateController.text =
                   "${date.day.toString().padLeft(2, '0')}-"
                   "${date.month.toString().padLeft(2, '0')}-"
                   "${date.year}";
-            } else if (dob is String) {
-              birthDateController.text = dob;
             }
           }
+
           emailController.text = data['email'] ?? '';
           phoneController.text = data['phone'] ?? '';
           addressController.text = data['address'] ?? '';
-          gender = data['gender'] ?? 'Laki-Laki';
-          bloodType = data['bloodType'] ?? 'A';
 
-          // Konversi List ke String untuk TextField
+          // --- Perbaikan Gender & BloodType ---
+          // Pastikan value dari Firestore sama persis dengan List di Dropdown
+          if (data['gender'] != null) {
+            gender = data['gender'];
+          }
+          if (data['bloodType'] != null) {
+            bloodType = data['bloodType'];
+          }
+
           List<dynamic> allergies = data['allergies'] ?? [];
           allergyController.text = allergies.join(', ');
         });
@@ -118,18 +140,19 @@ class _EditPatientProfilePageState extends State<EditPatientProfilePage> {
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
       try {
-        // Pecah string alergi kembali menjadi List
         List<String> allergyList = allergyController.text
             .split(',')
             .map((e) => e.trim())
             .where((e) => e.isNotEmpty)
             .toList();
 
+        // Memanggil service dengan data yang sudah di-update di state
         await _profileService.updateProfile(
-          name: nameController.text,
+          nama: nameController.text,
           nik: nikController.text,
-          gender: gender,
-          bloodType: bloodType,
+          birthDate: birthDateController.text,
+          gender: gender, // Isi dengan variabel state gender
+          bloodType: bloodType, // Isi dengan variabel state bloodType
           phone: phoneController.text,
           address: addressController.text,
           allergies: allergyList,
@@ -305,10 +328,7 @@ class _EditPatientProfilePageState extends State<EditPatientProfilePage> {
     return Center(
       child: Stack(
         children: [
-          const CircleAvatar(
-            radius: 50,
-            backgroundImage: AssetImage('assets/images/avatar.png'),
-          ),
+          const CircleAvatar(radius: 50),
           Positioned(
             bottom: 0,
             right: 0,
