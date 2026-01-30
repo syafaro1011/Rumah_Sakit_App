@@ -1,28 +1,43 @@
 import 'package:flutter/material.dart';
-import 'payment_option_page.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'payment_option_page.dart';
+import 'package:rumahsakitapp/model/medical_record_model.dart';
 
 class MedicalRecordDetailPage extends StatelessWidget {
   final Map<String, dynamic> recordData;
 
-  const MedicalRecordDetailPage({
-    super.key,
-    required this.recordData,
-  });
+  const MedicalRecordDetailPage({super.key, required this.recordData});
 
   @override
   Widget build(BuildContext context) {
-    final timestamp = recordData['createdAt'] as Timestamp?;
-    final date = timestamp != null
-        ? "${timestamp.toDate().day} "
-          "${_monthName(timestamp.toDate().month)} "
-          "${timestamp.toDate().year}"
+    // Menggunakan data dari Firestore atau model map
+    final dynamic rawDate = recordData['createdAt'];
+    DateTime? dateObject;
+
+    if (rawDate is Timestamp) {
+      dateObject = rawDate.toDate();
+    } else if (rawDate is DateTime) {
+      dateObject = rawDate;
+    }
+
+    final dateStr = dateObject != null
+        ? "${dateObject.day} ${_monthName(dateObject.month)} ${dateObject.year}"
         : "-";
 
+    // Pastikan status_pembayaran diambil dari data yang dilempar list sebelumnya
+    final status = recordData['status_pembayaran'] ?? 'Pending';
+    final bool isPaid = status.toString().toLowerCase() == 'lunas';
+
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFF),
       appBar: AppBar(
-        title: const Text('Rekam Medis'),
-        leading: const BackButton(),
+        title: const Text(
+          'Detail Rekam Medis',
+          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: const BackButton(color: Colors.black),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
@@ -31,7 +46,7 @@ class MedicalRecordDetailPage extends StatelessWidget {
             Expanded(
               child: ListView(
                 children: [
-                  _infoCard(date),
+                  _infoCard(dateStr),
                   _sectionCard(
                     icon: Icons.description_outlined,
                     iconColor: Colors.blue,
@@ -42,42 +57,46 @@ class MedicalRecordDetailPage extends StatelessWidget {
                     icon: Icons.medication_outlined,
                     iconColor: Colors.green,
                     title: 'Resep Obat',
-                    content: recordData['resep'] ?? '-',
+                    content: recordData['resepObat'] ?? '-', // Sesuai model
                   ),
-                  _sectionCard(
-                    title: 'Tindakan dan Anjuran',
-                    content: recordData['tindakan'] ?? '-',
-                  ),
-                  _paymentCard(),
+                  _paymentCard(isPaid, status),
                 ],
               ),
             ),
 
-            /// BUTTON BAYAR
-            if (recordData['paymentStatus'] != 'Lunas')
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF3F6DF6),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                  ),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const PaymentOptionPage(),
+            /// TOMBOL BAYAR (Hanya muncul jika belum lunas)
+            if (!isPaid)
+              Padding(
+                padding: const EdgeInsets.only(top: 16),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 55,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF3F6DF6),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
                       ),
-                    );
-                  },
-                  child: const Text(
-                    'Bayar',
-                    style: TextStyle(
+                    ),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => PaymentOptionPage(
+                            bookingId: recordData['bookingId'],
+                            totalAmount: recordData['totalBayar'] ?? 0,
+                          ),
+                        ),
+                      );
+                    },
+                    child: const Text(
+                      'Bayar Sekarang',
+                      style: TextStyle(
                         fontSize: 16,
-                        fontWeight: FontWeight.w600),
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -87,8 +106,6 @@ class MedicalRecordDetailPage extends StatelessWidget {
     );
   }
 
-  // ================= INFO DOCTOR =================
-
   Widget _infoCard(String date) {
     return _cardWrapper(
       child: Column(
@@ -96,30 +113,35 @@ class MedicalRecordDetailPage extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.calendar_today_outlined, size: 16),
-              const SizedBox(width: 6),
-              Text(date),
+              const Icon(
+                Icons.calendar_today_outlined,
+                size: 14,
+                color: Colors.grey,
+              ),
+              const SizedBox(width: 8),
+              Text(date, style: const TextStyle(color: Colors.grey)),
             ],
           ),
-          const SizedBox(height: 10),
+          const Divider(height: 20),
           Text(
-            recordData['doctorName'] ?? '-',
-            style: const TextStyle(fontWeight: FontWeight.w600),
+            recordData['doctorName'] ?? 'Dokter',
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
           ),
           Text(
-            recordData['poliName'] ?? '-',
-            style: const TextStyle(color: Colors.grey),
+            recordData['poliName'] ?? 'Umum',
+            style: const TextStyle(
+              color: Color(0xFF3F6DF6),
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ],
       ),
     );
   }
 
-  // ================= SECTION CARD =================
-
   Widget _sectionCard({
-    IconData? icon,
-    Color? iconColor,
+    required IconData icon,
+    required Color iconColor,
     required String title,
     required String content,
   }) {
@@ -129,80 +151,85 @@ class MedicalRecordDetailPage extends StatelessWidget {
         children: [
           Row(
             children: [
-              if (icon != null)
-                Icon(icon, color: iconColor ?? Colors.black),
-              if (icon != null)
-                const SizedBox(width: 8),
+              Icon(icon, color: iconColor, size: 20),
+              const SizedBox(width: 8),
               Text(
                 title,
                 style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          Text(content),
+          const Padding(padding: EdgeInsets.only(top: 10), child: Divider()),
+          Text(
+            content,
+            style: const TextStyle(height: 1.5, color: Colors.black87),
+          ),
         ],
       ),
     );
   }
 
-  // ================= PAYMENT =================
-
-  Widget _paymentCard() {
-    final isPaid = recordData['paymentStatus'] == 'Lunas';
-
+  Widget _paymentCard(bool isPaid, String status) {
     return _cardWrapper(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Row(
             children: [
-              Icon(Icons.attach_money, color: Colors.orange),
-              SizedBox(width: 8),
+              Icon(Icons.receipt_long_outlined, color: Colors.orange, size: 20),
+              const SizedBox(width: 8),
               Text(
-                'Pembayaran',
-                style: TextStyle(fontWeight: FontWeight.w600),
+                'Rincian Biaya',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 15),
+          _priceRow('Biaya Konsultasi', recordData['biayaKonsultasi'] ?? 0),
+          _priceRow('Biaya Obat', recordData['biayaObat'] ?? 0),
+          const Divider(height: 30),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Total Biaya:'),
+              const Text(
+                'Total Pembayaran',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
               Text(
-                "Rp ${recordData['totalPrice'] ?? 0}",
-                style: const TextStyle(fontWeight: FontWeight.w600),
+                "Rp ${recordData['totalBayar'] ?? 0}",
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  color: Color(0xFF3F6DF6),
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 15),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Status:'),
+              const Text('Status'),
               Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
+                  horizontal: 12,
+                  vertical: 6,
                 ),
                 decoration: BoxDecoration(
                   color: isPaid
-                      ? Colors.green.shade100
-                      : Colors.orange.shade100,
-                  borderRadius: BorderRadius.circular(20),
+                      ? Colors.green.withOpacity(0.1)
+                      : Colors.orange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(30),
                 ),
                 child: Text(
-                  recordData['paymentStatus'] ?? 'Pending',
+                  status.toUpperCase(),
                   style: TextStyle(
-                    color: isPaid
-                        ? Colors.green
-                        : Colors.orange,
+                    color: isPaid ? Colors.green : Colors.orange,
+                    fontWeight: FontWeight.bold,
                     fontSize: 12,
-                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
@@ -213,7 +240,21 @@ class MedicalRecordDetailPage extends StatelessWidget {
     );
   }
 
-  // ================= CARD WRAPPER =================
+  Widget _priceRow(String label, int price) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(color: Colors.grey)),
+          Text(
+            "Rp $price",
+            style: const TextStyle(fontWeight: FontWeight.w500),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _cardWrapper({required Widget child}) {
     return Container(
@@ -224,7 +265,7 @@ class MedicalRecordDetailPage extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withOpacity(0.03),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -233,8 +274,6 @@ class MedicalRecordDetailPage extends StatelessWidget {
       child: child,
     );
   }
-
-  // ================= MONTH FORMAT =================
 
   String _monthName(int month) {
     const months = [
@@ -250,7 +289,7 @@ class MedicalRecordDetailPage extends StatelessWidget {
       'September',
       'Oktober',
       'November',
-      'Desember'
+      'Desember',
     ];
     return months[month];
   }

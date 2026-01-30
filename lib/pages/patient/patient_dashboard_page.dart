@@ -14,9 +14,9 @@ class PatientDashboardPage extends StatefulWidget {
 class _PatientDashboardPageState extends State<PatientDashboardPage> {
   final DashboardPatientService _dashboardService = DashboardPatientService();
 
-  void _handleLogout() async {
-    await _dashboardService.signOut();
-    if (mounted) Navigator.pushReplacementNamed(context, AppRoutes.login);
+  // Helper untuk format Rupiah
+  String _formatRupiah(int amount) {
+    return "Rp ${amount.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}";
   }
 
   @override
@@ -26,9 +26,7 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
       bottomNavigationBar: const PatientBottomNav(currentIndex: 0),
       floatingActionButton: FloatingActionButton(
         backgroundColor: const Color(0xFF3F6DF6),
-        onPressed: () {
-          Navigator.pushNamed(context, AppRoutes.pilihPoli);
-        },
+        onPressed: () => Navigator.pushNamed(context, AppRoutes.pilihPoli),
         child: const Icon(Icons.add, color: Colors.white),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
@@ -48,8 +46,20 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
                 },
               ),
               const SizedBox(height: 20),
+              
+              // KARTU SALDO BARU
+              _balanceCard(),
+              
+              const SizedBox(height: 24),
               _todayPracticeCard(),
               const SizedBox(height: 24),
+              
+              const Text(
+                'Layanan Utama',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              const SizedBox(height: 16),
+              
               _menuCard(
                 icon: Icons.calendar_today_outlined,
                 title: 'Booking Dokter',
@@ -69,14 +79,86 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
                 title: 'Rekam Medis',
                 subtitle: 'Riwayat Kesehatan Anda',
                 bgColor: const Color(0xFFFFE9E4),
-                onTap: () =>
-                    Navigator.pushNamed(context, AppRoutes.medicalRecord),
+                onTap: () => Navigator.pushNamed(context, AppRoutes.medicalRecord),
               ),
               const SizedBox(height: 80),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  // ================= UI COMPONENTS =================
+
+  Widget _balanceCard() {
+    return StreamBuilder<DocumentSnapshot>(
+      // Menggunakan snapshots agar real-time saat saldo berubah
+      stream: _dashboardService.getUserProfileStream(), 
+      builder: (context, snapshot) {
+        int balance = 0;
+        if (snapshot.hasData && snapshot.data!.exists) {
+          final data = snapshot.data!.data() as Map<String, dynamic>;
+          balance = data['saldo'] ?? 0;
+        }
+
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF3F6DF6), Color(0xFF6A8DFF)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF3F6DF6).withOpacity(0.3),
+                blurRadius: 12,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Saldo Dompet',
+                    style: TextStyle(color: Colors.white70, fontSize: 13),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _formatRupiah(balance),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  // Tambahkan navigasi top up di sini jika perlu
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white.withOpacity(0.2),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: const Text('Top Up'),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 

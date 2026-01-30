@@ -5,6 +5,12 @@ class DashboardPatientService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
+  Stream<DocumentSnapshot> getUserProfileStream() {
+    String uid = _auth.currentUser?.uid ?? '';
+    return _db.collection('users').doc(uid).snapshots();
+  }
+
+  // Fungsi yang sudah ada sebelumnya
   Future<DocumentSnapshot> getUserProfile() async {
     String? uid = _auth.currentUser?.uid;
     if (uid == null) throw Exception("User not logged in");

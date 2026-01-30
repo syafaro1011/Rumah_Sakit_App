@@ -34,6 +34,7 @@ class _EditPatientProfilePageState extends State<EditPatientProfilePage> {
     _loadCurrentData();
   }
 
+
   // Mengambil data awal dari Firestore
   void _loadCurrentData() async {
     final user = FirebaseAuth.instance.currentUser;
