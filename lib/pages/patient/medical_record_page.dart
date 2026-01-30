@@ -1,8 +1,18 @@
 import 'package:flutter/material.dart';
 import 'medical_record_detail_page.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../services/medical_record_service.dart';
 
 class MedicalRecordPage extends StatelessWidget {
   const MedicalRecordPage({super.key});
+  String _monthName(int month) {
+  const months = [
+    '', 'Januari', 'Februari', 'Maret', 'April',
+    'Mei', 'Juni', 'Juli', 'Agustus',
+    'September', 'Oktober', 'November', 'Desember'
+  ];
+  return months[month];
+}
 
   @override
   Widget build(BuildContext context) {
@@ -23,30 +33,48 @@ class MedicalRecordPage extends StatelessWidget {
               style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
             ),
             const SizedBox(height: 12),
-            Expanded(
-              child: ListView(
-                children: [
-                  _medicalCard(
-                    date: '20 Januari 2026',
-                    doctor: 'Dr. Floyd Miles',
-                    poli: 'Poli Gigi',
-                    diagnosis: 'Gigi Berlubang',
-                    status: 'Pending',
-                    price: 'RP 150.000',
-                    isPaid: false,
-                  ),
-                  _medicalCard(
-                    date: '10 Januari 2026',
-                    doctor: 'Dr. Floyd Miles',
-                    poli: 'Poli Gigi',
-                    diagnosis: 'Gigi Berlubang',
-                    price: 'RP 150.000',
-                    status: 'Lunas',
-                    isPaid: true,
-                  ),
-                ],
-              ),
-            ),
+           Expanded(
+  child: StreamBuilder<QuerySnapshot>(
+    stream: MedicalRecordService().getMedicalRecordsByPatient(),
+    builder: (context, snapshot) {
+      if (snapshot.connectionState == ConnectionState.waiting) {
+        return const Center(child: CircularProgressIndicator());
+      }
+
+      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+        return const Center(child: Text("Belum ada rekam medis"));
+      }
+
+      final records = snapshot.data!.docs;
+
+      return ListView(
+        children: records.map((doc) {
+          final data = doc.data() as Map<String, dynamic>;
+
+          final timestamp = data['createdAt'] as Timestamp?;
+          final date = timestamp != null
+              ? "${timestamp.toDate().day} "
+                "${_monthName(timestamp.toDate().month)} "
+                "${timestamp.toDate().year}"
+              : "-";
+
+          final isPaid = data['paymentStatus'] == 'Lunas';
+
+          return _medicalCard(
+            date: date,
+            doctor: data['doctorName'] ?? '-',
+            poli: data['poliName'] ?? '-',
+            diagnosis: data['diagnosa'] ?? '-',
+            status: data['paymentStatus'] ?? 'Pending',
+            price: "RP ${data['totalPrice'] ?? 0}",
+            isPaid: isPaid,
+            recordData: data,
+          );
+        }).toList(),
+      );
+    },
+  ),
+),
           ],
         ),
       ),
@@ -95,14 +123,16 @@ class MedicalRecordPage extends StatelessWidget {
   // ================= MEDICAL CARD =================
 
   Widget _medicalCard({
-    required String date,
-    required String doctor,
-    required String poli,
-    required String diagnosis,
-    required String status,
-    String? price,
-    required bool isPaid,
-  }) {
+  required String date,
+  required String doctor,
+  required String poli,
+  required String diagnosis,
+  required String status,
+  String? price,
+  required bool isPaid,
+  required Map<String, dynamic> recordData,
+  
+}) {
     final statusColor = isPaid ? Colors.green.shade100 : Colors.orange.shade100;
     final statusTextColor = isPaid ? Colors.green : Colors.orange;
 
@@ -197,20 +227,22 @@ class MedicalRecordPage extends StatelessWidget {
                   ),
                 ),
                 Builder(
-                  builder: (context) {
-                    return ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const MedicalRecordDetailPage(),
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.visibility, size: 16),
-                      label: const Text('Detail'),
-                    );
-                  },
+                 builder: (context) {
+  return ElevatedButton.icon(
+    onPressed: () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => MedicalRecordDetailPage(
+            recordData: recordData,
+          ),
+        ),
+      );
+    },
+    icon: const Icon(Icons.visibility, size: 16),
+    label: const Text('Detail'),
+  );
+},
                 ),
               ],
             ),
@@ -219,4 +251,5 @@ class MedicalRecordPage extends StatelessWidget {
       ),
     );
   }
+  
 }

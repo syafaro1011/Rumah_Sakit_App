@@ -1,11 +1,24 @@
 import 'package:flutter/material.dart';
 import 'payment_option_page.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class MedicalRecordDetailPage extends StatelessWidget {
-  const MedicalRecordDetailPage({super.key});
+  final Map<String, dynamic> recordData;
+
+  const MedicalRecordDetailPage({
+    super.key,
+    required this.recordData,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final timestamp = recordData['createdAt'] as Timestamp?;
+    final date = timestamp != null
+        ? "${timestamp.toDate().day} "
+          "${_monthName(timestamp.toDate().month)} "
+          "${timestamp.toDate().year}"
+        : "-";
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Rekam Medis'),
@@ -18,23 +31,22 @@ class MedicalRecordDetailPage extends StatelessWidget {
             Expanded(
               child: ListView(
                 children: [
-                  _infoCard(),
+                  _infoCard(date),
                   _sectionCard(
                     icon: Icons.description_outlined,
                     iconColor: Colors.blue,
                     title: 'Diagnosis',
-                    content: 'Gigi Berlubang',
+                    content: recordData['diagnosa'] ?? '-',
                   ),
                   _sectionCard(
                     icon: Icons.medication_outlined,
                     iconColor: Colors.green,
                     title: 'Resep Obat',
-                    content: '• Paracetamol 5mg (3x1)',
+                    content: recordData['resep'] ?? '-',
                   ),
                   _sectionCard(
                     title: 'Tindakan dan Anjuran',
-                    content:
-                        'Sementara konsumsi makanan yang teksturnya lembut',
+                    content: recordData['tindakan'] ?? '-',
                   ),
                   _paymentCard(),
                 ],
@@ -42,30 +54,33 @@ class MedicalRecordDetailPage extends StatelessWidget {
             ),
 
             /// BUTTON BAYAR
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF3F6DF6),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
+            if (recordData['paymentStatus'] != 'Lunas')
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF3F6DF6),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const PaymentOptionPage(),
+                      ),
+                    );
+                  },
+                  child: const Text(
+                    'Bayar',
+                    style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600),
                   ),
                 ),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const PaymentOptionPage(),
-                    ),
-                  );
-                },
-                child: const Text(
-                  'Bayar',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                ),
               ),
-            ),
           ],
         ),
       ),
@@ -74,24 +89,27 @@ class MedicalRecordDetailPage extends StatelessWidget {
 
   // ================= INFO DOCTOR =================
 
-  Widget _infoCard() {
+  Widget _infoCard(String date) {
     return _cardWrapper(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
+        children: [
           Row(
             children: [
-              Icon(Icons.calendar_today_outlined, size: 16),
-              SizedBox(width: 6),
-              Text('20 Januari 2026'),
+              const Icon(Icons.calendar_today_outlined, size: 16),
+              const SizedBox(width: 6),
+              Text(date),
             ],
           ),
-          SizedBox(height: 10),
+          const SizedBox(height: 10),
           Text(
-            'Dr. Floyd Miles',
-            style: TextStyle(fontWeight: FontWeight.w600),
+            recordData['doctorName'] ?? '-',
+            style: const TextStyle(fontWeight: FontWeight.w600),
           ),
-          Text('Poli Gigi', style: TextStyle(color: Colors.grey)),
+          Text(
+            recordData['poliName'] ?? '-',
+            style: const TextStyle(color: Colors.grey),
+          ),
         ],
       ),
     );
@@ -111,8 +129,10 @@ class MedicalRecordDetailPage extends StatelessWidget {
         children: [
           Row(
             children: [
-              if (icon != null) Icon(icon, color: iconColor ?? Colors.black),
-              if (icon != null) const SizedBox(width: 8),
+              if (icon != null)
+                Icon(icon, color: iconColor ?? Colors.black),
+              if (icon != null)
+                const SizedBox(width: 8),
               Text(
                 title,
                 style: const TextStyle(
@@ -132,23 +152,31 @@ class MedicalRecordDetailPage extends StatelessWidget {
   // ================= PAYMENT =================
 
   Widget _paymentCard() {
+    final isPaid = recordData['paymentStatus'] == 'Lunas';
+
     return _cardWrapper(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: const [
+          const Row(
+            children: [
               Icon(Icons.attach_money, color: Colors.orange),
               SizedBox(width: 8),
-              Text('Pembayaran', style: TextStyle(fontWeight: FontWeight.w600)),
+              Text(
+                'Pembayaran',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
             ],
           ),
           const SizedBox(height: 10),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: const [
-              Text('Total Biaya:'),
-              Text('Rp 150.000', style: TextStyle(fontWeight: FontWeight.w600)),
+            children: [
+              const Text('Total Biaya:'),
+              Text(
+                "Rp ${recordData['totalPrice'] ?? 0}",
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
             ],
           ),
           const SizedBox(height: 6),
@@ -162,13 +190,17 @@ class MedicalRecordDetailPage extends StatelessWidget {
                   vertical: 4,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.orange.shade100,
+                  color: isPaid
+                      ? Colors.green.shade100
+                      : Colors.orange.shade100,
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: const Text(
-                  'Pending',
+                child: Text(
+                  recordData['paymentStatus'] ?? 'Pending',
                   style: TextStyle(
-                    color: Colors.orange,
+                    color: isPaid
+                        ? Colors.green
+                        : Colors.orange,
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
                   ),
@@ -200,5 +232,26 @@ class MedicalRecordDetailPage extends StatelessWidget {
       ),
       child: child,
     );
+  }
+
+  // ================= MONTH FORMAT =================
+
+  String _monthName(int month) {
+    const months = [
+      '',
+      'Januari',
+      'Februari',
+      'Maret',
+      'April',
+      'Mei',
+      'Juni',
+      'Juli',
+      'Agustus',
+      'September',
+      'Oktober',
+      'November',
+      'Desember'
+    ];
+    return months[month];
   }
 }
