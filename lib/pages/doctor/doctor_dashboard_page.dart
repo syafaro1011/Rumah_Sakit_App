@@ -61,12 +61,28 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
                 
                 // REVISI: Row Stat Card yang sekarang lebih ramping dan konsisten
                 Row(
-                  children: [
-                    _buildStatCard("Patients", "+${userData?['total_pasien'] ?? '423'}"),
-                    const SizedBox(width: 16),
-                    _buildStatCard("Experiences", "+${userData?['experience'] ?? '8'} year"),
-                  ],
-                ),
+  children: [
+    Expanded(
+      child: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('medical_records')
+            .where('doctorId', isEqualTo: user?.uid)
+            .snapshots(),
+        builder: (context, snapshot) {
+          int totalPatients = snapshot.data?.docs.length ?? 0;
+
+          return _buildStatCard("Patients", "+$totalPatients");
+        },
+      ),
+    ),
+    const SizedBox(width: 16),
+    _buildStatCard(
+      "Experiences",
+      "+${userData?['experience'] ?? '0'} year",
+    ),
+  ],
+),
+
                 const SizedBox(height: 35),
 
                 const Text("Schedule", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
@@ -101,31 +117,38 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
 
   // --- LOGIKA TIME GRID ---
   Widget _buildTimeGrid(String dateFilter, {required Key key}) {
-    return StreamBuilder<QuerySnapshot>(
-      key: key,
-      stream: FirebaseFirestore.instance
-          .collection('antrean')
-          .where('tanggal', isEqualTo: dateFilter)
-          .snapshots(),
-      builder: (context, snapshot) {
-        List<String> bookedTimes = [];
-        if (snapshot.hasData) {
-          bookedTimes = snapshot.data!.docs
-              .map((doc) => (doc.data() as Map<String, dynamic>)['jam'].toString())
-              .toList();
-        }
+  final auth = AuthService();
+  final doctorId = auth.currentUser?.uid;
 
-        return Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: allTimeSlots.map((time) {
-            bool isBooked = bookedTimes.contains(time);
-            return _buildTimeChip(time, isBooked);
-          }).toList(),
-        );
-      },
-    );
-  }
+  return StreamBuilder<QuerySnapshot>(
+    key: key,
+    stream: FirebaseFirestore.instance
+        .collection('antrean')
+        .where('tanggal', isEqualTo: dateFilter)
+        .where('doctorId', isEqualTo: doctorId) // 🔥 FILTER DOKTER
+        .snapshots(),
+    builder: (context, snapshot) {
+      List<String> bookedTimes = [];
+
+      if (snapshot.hasData) {
+        bookedTimes = snapshot.data!.docs
+            .map((doc) =>
+                (doc.data() as Map<String, dynamic>)['jam'].toString())
+            .toList();
+      }
+
+      return Wrap(
+        spacing: 12,
+        runSpacing: 12,
+        children: allTimeSlots.map((time) {
+          bool isBooked = bookedTimes.contains(time);
+          return _buildTimeChip(time, isBooked);
+        }).toList(),
+      );
+    },
+  );
+}
+
 
   Widget _buildTimeChip(String time, bool isBooked) {
     return AnimatedContainer(
@@ -151,20 +174,27 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
 
   // --- KOMPONEN UI LAINNYA ---
   Widget _buildHorizontalCalendar() {
-    return SizedBox(
-      height: 95,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        children: [
-          _buildAnimatedDateCard("13", "March", 2026, 3),
-          _buildAnimatedDateCard("16", "March", 2026, 3),
-          _buildAnimatedDateCard("26", "March", 2026, 3),
-          _buildAnimatedDateCard("30", "March", 2026, 3),
-        ],
-      ),
-    );
-  }
+  DateTime today = DateTime.now();
+
+  return SizedBox(
+    height: 95,
+    child: ListView.builder(
+      scrollDirection: Axis.horizontal,
+      physics: const BouncingScrollPhysics(),
+      itemCount: 7, // 7 hari ke depan
+      itemBuilder: (context, index) {
+        DateTime date = today.add(Duration(days: index));
+        return _buildAnimatedDateCard(
+          date.day.toString(),
+          DateFormat('MMMM').format(date),
+          date.year,
+          date.month,
+        );
+      },
+    ),
+  );
+}
+
 
   Widget _buildAnimatedDateCard(String day, String month, int year, int monthNum) {
     bool isSelected = selectedDate.day.toString() == day && selectedDate.month == monthNum;
