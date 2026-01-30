@@ -24,6 +24,7 @@ class _EditPatientProfilePageState extends State<EditPatientProfilePage> {
   final addressController = TextEditingController();
   final allergyController = TextEditingController();
 
+  DateTime? _selectedBirthDate;
   String gender = 'Laki-Laki';
   String bloodType = 'A';
 
@@ -37,19 +38,34 @@ class _EditPatientProfilePageState extends State<EditPatientProfilePage> {
   void _loadCurrentData() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
       if (doc.exists) {
         final data = doc.data()!;
         setState(() {
           nameController.text = data['name'] ?? '';
           nikController.text = data['nik'] ?? '';
-          birthDateController.text = data['dob'] ?? '';
+          final dob = data['dob'];
+          if (dob != null) {
+            if (dob is Timestamp) {
+              final date = dob.toDate();
+              _selectedBirthDate = date;
+              birthDateController.text =
+                  "${date.day.toString().padLeft(2, '0')}-"
+                  "${date.month.toString().padLeft(2, '0')}-"
+                  "${date.year}";
+            } else if (dob is String) {
+              birthDateController.text = dob;
+            }
+          }
           emailController.text = data['email'] ?? '';
           phoneController.text = data['phone'] ?? '';
           addressController.text = data['address'] ?? '';
           gender = data['gender'] ?? 'Laki-Laki';
           bloodType = data['bloodType'] ?? 'A';
-          
+
           // Konversi List ke String untuk TextField
           List<dynamic> allergies = data['allergies'] ?? [];
           allergyController.text = allergies.join(', ');
@@ -69,6 +85,33 @@ class _EditPatientProfilePageState extends State<EditPatientProfilePage> {
     addressController.dispose();
     allergyController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickBirthDate() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedBirthDate ?? DateTime(2000),
+      firstDate: DateTime(1900),
+      lastDate: DateTime.now(),
+      builder: (context, child) {
+        return Theme(
+          data: ThemeData.light().copyWith(
+            colorScheme: const ColorScheme.light(primary: Color(0xFF3F6DF6)),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() {
+        _selectedBirthDate = picked;
+        birthDateController.text =
+            "${picked.day.toString().padLeft(2, '0')}-"
+            "${picked.month.toString().padLeft(2, '0')}-"
+            "${picked.year}";
+      });
+    }
   }
 
   Future<void> _saveProfile() async {
@@ -115,13 +158,16 @@ class _EditPatientProfilePageState extends State<EditPatientProfilePage> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Edit Profil', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Edit Profil',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 0,
       ),
-      body: _isLoading 
-          ? const Center(child: CircularProgressIndicator()) 
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
               padding: const EdgeInsets.all(16),
               child: Form(
@@ -134,7 +180,11 @@ class _EditPatientProfilePageState extends State<EditPatientProfilePage> {
                       title: 'Informasi Pribadi',
                       children: [
                         _textField('Nama Lengkap', nameController),
-                        _textField('NIK', nikController, keyboardType: TextInputType.number),
+                        _textField(
+                          'NIK',
+                          nikController,
+                          keyboardType: TextInputType.number,
+                        ),
                         _dropdownField(
                           label: 'Jenis Kelamin',
                           value: gender,
@@ -147,19 +197,32 @@ class _EditPatientProfilePageState extends State<EditPatientProfilePage> {
                           items: const ['A', 'B', 'AB', 'O'],
                           onChanged: (v) => setState(() => bloodType = v!),
                         ),
-                        _textField(
-                          'Tanggal Lahir',
-                          birthDateController,
-                          readOnly: true,
-                          suffixIcon: Icons.calendar_today,
+                        GestureDetector(
+                          onTap: _pickBirthDate,
+                          child: AbsorbPointer(
+                            child: _textField(
+                              'Tanggal Lahir',
+                              birthDateController,
+                              readOnly: true,
+                              suffixIcon: Icons.calendar_today,
+                            ),
+                          ),
                         ),
                       ],
                     ),
                     _sectionCard(
                       title: 'Kontak',
                       children: [
-                        _textField('Email', emailController, readOnly: true), // Email biasanya tidak diubah sembarang
-                        _textField('No. Telpon', phoneController, keyboardType: TextInputType.phone),
+                        _textField(
+                          'Email',
+                          emailController,
+                          readOnly: true,
+                        ), // Email biasanya tidak diubah sembarang
+                        _textField(
+                          'No. Telpon',
+                          phoneController,
+                          keyboardType: TextInputType.phone,
+                        ),
                         _textField('Alamat', addressController, maxLines: 3),
                       ],
                     ),
@@ -180,11 +243,18 @@ class _EditPatientProfilePageState extends State<EditPatientProfilePage> {
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF3F6DF6),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                         onPressed: _isLoading ? null : _saveProfile,
-                        child: const Text('Simpan Perubahan', 
-                          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                        child: const Text(
+                          'Simpan Perubahan',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -224,7 +294,8 @@ class _EditPatientProfilePageState extends State<EditPatientProfilePage> {
             borderSide: BorderSide(color: Colors.grey.shade300),
           ),
         ),
-        validator: (value) => value == null || value.isEmpty ? '$label wajib diisi' : null,
+        validator: (value) =>
+            value == null || value.isEmpty ? '$label wajib diisi' : null,
       ),
     );
   }
@@ -245,7 +316,11 @@ class _EditPatientProfilePageState extends State<EditPatientProfilePage> {
               radius: 18,
               backgroundColor: const Color(0xFF3F6DF6),
               child: IconButton(
-                icon: const Icon(Icons.camera_alt, size: 16, color: Colors.white),
+                icon: const Icon(
+                  Icons.camera_alt,
+                  size: 16,
+                  color: Colors.white,
+                ),
                 onPressed: () {
                   // Tambahkan fungsi image picker di sini jika diperlukan
                 },
@@ -266,13 +341,20 @@ class _EditPatientProfilePageState extends State<EditPatientProfilePage> {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.grey.shade100),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4)),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          Text(
+            title,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 16),
           ...children,
         ],
@@ -290,7 +372,9 @@ class _EditPatientProfilePageState extends State<EditPatientProfilePage> {
       padding: const EdgeInsets.only(bottom: 12),
       child: DropdownButtonFormField<String>(
         value: items.contains(value) ? value : items.first,
-        items: items.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+        items: items
+            .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+            .toList(),
         onChanged: onChanged,
         decoration: InputDecoration(
           labelText: label,
