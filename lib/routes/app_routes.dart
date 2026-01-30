@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:path/path.dart';
 import '../pages/login_page.dart';
 import '../pages/signup_page.dart';
 import '../pages/patient/patient_dashboard_page.dart';
@@ -13,7 +12,7 @@ import '../pages/patient/queue_info_page.dart';
 import '../pages/patient/medical_record_page.dart';
 import '../pages/patient/patient_profile_page.dart';
 import '../pages/admin/admin_profile_page.dart';
-import '../pages/doctor/jadwal_praktik_page.dart';
+
 
 class AppRoutes {
   static const String login = '/login';
