@@ -65,7 +65,7 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
                 _buildQueueSummary(doctor.id, dateFilter),
 
                 const SizedBox(height: 25),
-                _buildNavigationBanner(context),
+                _buildNavigationBanner(context, doctor.id),
                 const SizedBox(height: 25),
                 Row(
                   children: [
@@ -107,30 +107,7 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
                     );
                   },
                 ),
-
-                const SizedBox(height: 35),
-
-                // --- BAGIAN 2: DAFTAR PASIEN ---
-                const Text(
-                  "Antrean Pasien",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 15),
-                _buildHorizontalCalendar(),
-                const SizedBox(height: 20),
-                Text(
-                  "Daftar Pasien Tanggal $dateFilter",
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.blueGrey,
-                  ),
-                ),
-                const SizedBox(height: 15),
-
-                _buildPatientList(doctor.id, dateFilter),
-
-                const SizedBox(height: 40),
+                const SizedBox(height: 35)
               ],
             ),
           );
@@ -200,97 +177,7 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
     );
   }
 
-  // Widget List Pasien menggunakan Card
-  Widget _buildPatientList(String doctorId, String dateFilter) {
-    return StreamBuilder<List<BookingsModel>>(
-      stream: _doctorService.getBookingsByDate(doctorId, dateFilter),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting)
-          return const Center(child: CircularProgressIndicator());
-
-        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade50,
-              borderRadius: BorderRadius.circular(15),
-            ),
-            child: const Column(
-              children: [
-                Icon(Icons.event_busy, color: Colors.grey, size: 40),
-                SizedBox(height: 10),
-                Text(
-                  "Tidak ada pasien untuk tanggal ini.",
-                  style: TextStyle(color: Colors.grey),
-                ),
-              ],
-            ),
-          );
-        }
-
-        return ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: snapshot.data!.length,
-          itemBuilder: (context, index) {
-            final booking = snapshot.data![index];
-            return Card(
-              elevation: 0,
-              margin: const EdgeInsets.only(bottom: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15),
-                side: BorderSide(color: Colors.grey.shade200),
-              ),
-              child: ListTile(
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 8,
-                ),
-                leading: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF3F6DF6).withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.person, color: Color(0xFF3F6DF6)),
-                ),
-                title: Text(
-                  booking.userName,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-                subtitle: const Text(
-                  "Konsultasi Umum",
-                  style: TextStyle(color: Colors.grey, fontSize: 13),
-                ),
-                trailing: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF3F6DF6),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    booking.time,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
+  
 
   // --- UI Lainnya ---
   Widget _buildHeader(DoctorModel doctor) {
@@ -365,61 +252,7 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
     );
   }
 
-  Widget _buildHorizontalCalendar() {
-    return SizedBox(
-      height: 90,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: 7,
-        itemBuilder: (context, index) {
-          DateTime date = DateTime.now().add(Duration(days: index));
-          bool isSelected =
-              DateFormat('yyyy-MM-dd').format(date) ==
-              DateFormat('yyyy-MM-dd').format(selectedDate);
-
-          return GestureDetector(
-            onTap: () => setState(() => selectedDate = date),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
-              width: 70,
-              margin: const EdgeInsets.only(right: 12),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? const Color(0xFF3F6DF6)
-                    : const Color(0xFFF1F5FF),
-                borderRadius: BorderRadius.circular(18),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    DateFormat('dd').format(date),
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: isSelected
-                          ? Colors.white
-                          : const Color(0xFF3F6DF6),
-                    ),
-                  ),
-                  Text(
-                    DateFormat('EEE').format(date),
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: isSelected
-                          ? Colors.white70
-                          : const Color(0xFF3F6DF6),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
+  
   Widget _buildStatCard(String label, String value) {
     return Expanded(
       child: Container(
@@ -445,12 +278,12 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
     );
   }
 
-  Widget _buildNavigationBanner(BuildContext context) {
+  Widget _buildNavigationBanner(BuildContext context, String doctorId) {
     return InkWell(
       onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const JadwalPraktikPage()),
-      ),
+      context,
+      MaterialPageRoute(builder: (context) => JadwalPraktikPage(doctorId: doctorId)),
+    ),
       borderRadius: BorderRadius.circular(15),
       child: Container(
         padding: const EdgeInsets.all(20),
@@ -477,4 +310,6 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
       ),
     );
   }
+
+  
 }

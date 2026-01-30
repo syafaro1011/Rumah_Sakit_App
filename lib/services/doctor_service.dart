@@ -15,6 +15,11 @@ class DoctorService {
     });
   }
 
+  //Ambil User Stream
+  Stream<DocumentSnapshot> getUserStream(String userId) {
+  return _db.collection('users').doc(userId).snapshots();
+}
+
   // AMBIL ANTREAN DARI KOLEKSI 'bookings'
   Stream<List<BookingsModel>> getBookingsByDate(String doctorId, String date) {
     return _db

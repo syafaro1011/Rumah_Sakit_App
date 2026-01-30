@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:path/path.dart';
 import '../pages/login_page.dart';
 import '../pages/signup_page.dart';
 import '../pages/patient/patient_dashboard_page.dart';
@@ -12,6 +13,7 @@ import '../pages/patient/queue_info_page.dart';
 import '../pages/patient/medical_record_page.dart';
 import '../pages/patient/patient_profile_page.dart';
 import '../pages/admin/admin_profile_page.dart';
+import '../pages/doctor/jadwal_praktik_page.dart';
 
 class AppRoutes {
   static const String login = '/login';
@@ -27,6 +29,7 @@ class AppRoutes {
   static const String patientProfile = '/patient/patient-profile-page';
   static const String rekamMedis = '/doctor/rekam-medis-page';
   static const String adminProfile = '/admin/admin-profile-page';
+  static const String jadwal_praktik = '/doctor/jadwal-praktik-page';
 
   // Map yang berisi daftar rute
   static Map<String, WidgetBuilder> getRoutes() {
