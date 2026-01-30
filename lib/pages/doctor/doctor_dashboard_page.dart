@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/auth_service.dart';
+import '../../services/doctor_service.dart';
+import '../../model/doctor_model.dart';
+import '../../model/bookings_model.dart';
 import 'jadwal_praktik_page.dart';
 
 class DoctorDashboardPage extends StatefulWidget {
@@ -12,18 +15,14 @@ class DoctorDashboardPage extends StatefulWidget {
 }
 
 class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
+  final DoctorService _doctorService = DoctorService();
+  final AuthService _auth = AuthService();
   DateTime selectedDate = DateTime.now();
-  
-  final List<String> allTimeSlots = [
-    "08:00", "09:00", "10:00", "11:00", 
-    "13:00", "14:00", "15:00", "16:00"
-  ];
 
   @override
   Widget build(BuildContext context) {
-    final auth = AuthService();
-    final user = auth.currentUser;
-    String dateFilter = DateFormat('yyyy-MM-dd').format(selectedDate);
+    final user = _auth.currentUser;
+    String dateFilter = DateFormat('d MMM yyyy').format(selectedDate);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -32,64 +31,105 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
         elevation: 0,
         automaticallyImplyLeading: false,
         actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: IconButton(
-              icon: const Icon(Icons.logout_rounded, color: Colors.redAccent, size: 28),
-              onPressed: () => auth.signOut().then((_) => Navigator.pushReplacementNamed(context, '/login')),
+          IconButton(
+            icon: const Icon(Icons.logout_rounded, color: Colors.redAccent),
+            onPressed: () => _auth.signOut().then(
+              (_) => Navigator.pushReplacementNamed(context, '/login'),
             ),
           ),
+          const SizedBox(width: 12),
         ],
       ),
-      body: StreamBuilder<DocumentSnapshot>(
-        stream: auth.getUserData(user?.uid ?? ""),
+      body: StreamBuilder<DoctorModel>(
+        stream: _doctorService.getDoctorStream(user?.uid ?? ""),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-          var userData = snapshot.data?.data() as Map<String, dynamic>?;
+          if (snapshot.hasError)
+            return Center(child: Text("Error: ${snapshot.error}"));
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (!snapshot.hasData)
+            return const Center(child: Text("Data tidak ditemukan"));
+
+          final doctor = snapshot.data!;
 
           return SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 10),
-                _buildHeader(userData),
-                const SizedBox(height: 30),
+                _buildHeader(doctor),
+                const SizedBox(height: 25),
+
+                // --- STATS JUMLAH PASIEN (REAL-TIME) ---
+                _buildQueueSummary(doctor.id, dateFilter),
+
+                const SizedBox(height: 25),
                 _buildNavigationBanner(context),
-                const SizedBox(height: 30),
-                
-                // REVISI: Row Stat Card yang sekarang lebih ramping dan konsisten
+                const SizedBox(height: 25),
                 Row(
                   children: [
-                    _buildStatCard("Patients", "+${userData?['total_pasien'] ?? '423'}"),
+                    _buildStatCard("Pengalaman", "+${doctor.experience} Tahun"),
                     const SizedBox(width: 16),
-                    _buildStatCard("Experiences", "+${userData?['experience'] ?? '8'} year"),
+                    _buildStatCard(
+                      "Status",
+                      doctor.isActive ? "Aktif" : "Non-Aktif",
+                    ),
                   ],
                 ),
                 const SizedBox(height: 35),
 
-                const Text("Schedule", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                // --- BAGIAN 1: JADWAL RUTIN ---
+                const Text(
+                  "Jadwal Praktik",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
                 const SizedBox(height: 15),
-                _buildHorizontalCalendar(),
-                
-                const SizedBox(height: 35),
-                const Text("Time Slots Status", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 15),
-
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 300),
-                  transitionBuilder: (child, animation) {
-                    return FadeTransition(
-                      opacity: animation,
-                      child: SlideTransition(
-                        position: Tween<Offset>(begin: const Offset(0, 0.05), end: Offset.zero).animate(animation),
-                        child: child,
-                      ),
+                StreamBuilder<QuerySnapshot>(
+                  stream: _doctorService.getJadwalDokter(doctor.id),
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                      return const Text(
+                        'Belum ada jadwal praktik rutin',
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      );
+                    }
+                    return Column(
+                      children: snapshot.data!.docs.map((doc) {
+                        final s = DoctorSchedule.fromMap(
+                          doc.data() as Map<String, dynamic>,
+                        );
+                        return _scheduleItem(context, s);
+                      }).toList(),
                     );
                   },
-                  child: _buildTimeGrid(dateFilter, key: ValueKey(dateFilter)),
                 ),
+
+                const SizedBox(height: 35),
+
+                // --- BAGIAN 2: DAFTAR PASIEN ---
+                const Text(
+                  "Antrean Pasien",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 15),
+                _buildHorizontalCalendar(),
+                const SizedBox(height: 20),
+                Text(
+                  "Daftar Pasien Tanggal $dateFilter",
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.blueGrey,
+                  ),
+                ),
+                const SizedBox(height: 15),
+
+                _buildPatientList(doctor.id, dateFilter),
+
                 const SizedBox(height: 40),
               ],
             ),
@@ -99,183 +139,339 @@ class _DoctorDashboardPageState extends State<DoctorDashboardPage> {
     );
   }
 
-  // --- LOGIKA TIME GRID ---
-  Widget _buildTimeGrid(String dateFilter, {required Key key}) {
-    return StreamBuilder<QuerySnapshot>(
-      key: key,
-      stream: FirebaseFirestore.instance
-          .collection('antrean')
-          .where('tanggal', isEqualTo: dateFilter)
-          .snapshots(),
+  // --- WIDGET BARU: SUMMARY STATS ---
+  Widget _buildQueueSummary(String doctorId, String dateFilter) {
+    return StreamBuilder<List<BookingsModel>>(
+      // Menggunakan service yang sama dengan List di bawah
+      stream: _doctorService.getBookingsByDate(doctorId, dateFilter),
       builder: (context, snapshot) {
-        List<String> bookedTimes = [];
+        // Jika loading, tampilkan angka 0 atau loading kecil
+        int totalPasien = 0;
         if (snapshot.hasData) {
-          bookedTimes = snapshot.data!.docs
-              .map((doc) => (doc.data() as Map<String, dynamic>)['jam'].toString())
-              .toList();
+          totalPasien = snapshot.data!.length;
         }
 
-        return Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: allTimeSlots.map((time) {
-            bool isBooked = bookedTimes.contains(time);
-            return _buildTimeChip(time, isBooked);
-          }).toList(),
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF3F6DF6), Color(0xFF6A8DFF)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Row(
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "Pasien Perlu Ditangani",
+                    style: TextStyle(color: Colors.white70, fontSize: 14),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "$totalPasien Orang",
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    "Pada Tanggal $dateFilter", // Menunjukkan tanggal yang aktif
+                    style: const TextStyle(color: Colors.white54, fontSize: 11),
+                  ),
+                ],
+              ),
+              const Spacer(),
+              const Icon(
+                Icons.pending_actions_rounded,
+                color: Colors.white,
+                size: 40,
+              ),
+            ],
+          ),
         );
       },
     );
   }
 
-  Widget _buildTimeChip(String time, bool isBooked) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-      decoration: BoxDecoration(
-        color: isBooked ? const Color(0xFF3F6DF6) : const Color(0xFFF5F7FA),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isBooked ? const Color(0xFF3F6DF6) : Colors.transparent,
-          width: 1.5,
-        ),
-      ),
-      child: Text(
-        time,
-        style: TextStyle(
-          color: isBooked ? Colors.white : Colors.black26,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
+  // Widget List Pasien menggunakan Card
+  Widget _buildPatientList(String doctorId, String dateFilter) {
+    return StreamBuilder<List<BookingsModel>>(
+      stream: _doctorService.getBookingsByDate(doctorId, dateFilter),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting)
+          return const Center(child: CircularProgressIndicator());
+
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: const Column(
+              children: [
+                Icon(Icons.event_busy, color: Colors.grey, size: 40),
+                SizedBox(height: 10),
+                Text(
+                  "Tidak ada pasien untuk tanggal ini.",
+                  style: TextStyle(color: Colors.grey),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: snapshot.data!.length,
+          itemBuilder: (context, index) {
+            final booking = snapshot.data![index];
+            return Card(
+              elevation: 0,
+              margin: const EdgeInsets.only(bottom: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+                side: BorderSide(color: Colors.grey.shade200),
+              ),
+              child: ListTile(
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 8,
+                ),
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF3F6DF6).withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.person, color: Color(0xFF3F6DF6)),
+                ),
+                title: Text(
+                  booking.userName,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                subtitle: const Text(
+                  "Konsultasi Umum",
+                  style: TextStyle(color: Colors.grey, fontSize: 13),
+                ),
+                trailing: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF3F6DF6),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    booking.time,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
-  // --- KOMPONEN UI LAINNYA ---
-  Widget _buildHorizontalCalendar() {
-    return SizedBox(
-      height: 95,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        children: [
-          _buildAnimatedDateCard("13", "March", 2026, 3),
-          _buildAnimatedDateCard("16", "March", 2026, 3),
-          _buildAnimatedDateCard("26", "March", 2026, 3),
-          _buildAnimatedDateCard("30", "March", 2026, 3),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAnimatedDateCard(String day, String month, int year, int monthNum) {
-    bool isSelected = selectedDate.day.toString() == day && selectedDate.month == monthNum;
-    return GestureDetector(
-      onTap: () => setState(() => selectedDate = DateTime(year, monthNum, int.parse(day))),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-        width: 70,
-        margin: const EdgeInsets.only(right: 12),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF3F6DF6) : const Color(0xFFF1F5FF),
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: isSelected 
-            ? [BoxShadow(color: const Color(0xFF3F6DF6).withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 5))] 
-            : [],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(day, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: isSelected ? Colors.white : const Color(0xFF3F6DF6))),
-            Text(month, style: TextStyle(fontSize: 11, color: isSelected ? Colors.white70 : const Color(0xFF3F6DF6))),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeader(Map<String, dynamic>? userData) {
+  // --- UI Lainnya ---
+  Widget _buildHeader(DoctorModel doctor) {
     return Row(
       children: [
-        Hero(
-          tag: 'profile_pic',
-          child: Container(
-            width: 85, height: 85,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              color: const Color(0xFFEAF1FF),
-              image: userData?['photoUrl'] != null && userData!['photoUrl'] != ""
-                  ? DecorationImage(image: NetworkImage(userData['photoUrl']), fit: BoxFit.cover)
-                  : null,
-            ),
-            child: userData?['photoUrl'] == null || userData!['photoUrl'] == ""
-                ? const Icon(Icons.person, size: 45, color: Color(0xFF3F6DF6)) : null,
+        Container(
+          width: 80,
+          height: 80,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            color: const Color(0xFFEAF1FF),
+            image: (doctor.photoUrl != null && doctor.photoUrl!.isNotEmpty)
+                ? DecorationImage(
+                    image: NetworkImage(doctor.photoUrl!),
+                    fit: BoxFit.cover,
+                  )
+                : null,
           ),
+          child: (doctor.photoUrl == null || doctor.photoUrl!.isEmpty)
+              ? const Icon(Icons.person, size: 40, color: Color(0xFF3F6DF6))
+              : null,
         ),
         const SizedBox(width: 15),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(userData?['nama'] ?? "Nama Dokter", style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            Text(userData?['poli'] ?? "Spesialis", style: const TextStyle(color: Colors.grey, fontSize: 14)),
+            Text(
+              "dr. ${doctor.nama}",
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            Text(
+              doctor.poli,
+              style: const TextStyle(color: Colors.grey, fontSize: 14),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              "SIP: ${doctor.sip}",
+              style: const TextStyle(
+                color: Color(0xFF3F6DF6),
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ],
         ),
       ],
     );
   }
 
-  Widget _buildNavigationBanner(BuildContext context) {
-    return Material(
-      color: const Color(0xFF1E1E1E),
-      borderRadius: BorderRadius.circular(15),
-      child: InkWell(
-        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const JadwalPraktikPage())),
-        borderRadius: BorderRadius.circular(15),
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          child: const Row(
-            children: [
-              Icon(Icons.calendar_today_rounded, color: Colors.white, size: 18),
-              SizedBox(width: 12),
-              Text("Jadwal Praktik Pasien", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
-              Spacer(),
-              Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 14),
-            ],
+  Widget _scheduleItem(BuildContext context, DoctorSchedule s) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(s.day, style: const TextStyle(fontWeight: FontWeight.bold)),
+          Text(
+            '${s.start.format(context)} - ${s.end.format(context)}',
+            style: const TextStyle(
+              color: Colors.blue,
+              fontWeight: FontWeight.w600,
+            ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHorizontalCalendar() {
+    return SizedBox(
+      height: 90,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: 7,
+        itemBuilder: (context, index) {
+          DateTime date = DateTime.now().add(Duration(days: index));
+          bool isSelected =
+              DateFormat('yyyy-MM-dd').format(date) ==
+              DateFormat('yyyy-MM-dd').format(selectedDate);
+
+          return GestureDetector(
+            onTap: () => setState(() => selectedDate = date),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              width: 70,
+              margin: const EdgeInsets.only(right: 12),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? const Color(0xFF3F6DF6)
+                    : const Color(0xFFF1F5FF),
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    DateFormat('dd').format(date),
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: isSelected
+                          ? Colors.white
+                          : const Color(0xFF3F6DF6),
+                    ),
+                  ),
+                  Text(
+                    DateFormat('EEE').format(date),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isSelected
+                          ? Colors.white70
+                          : const Color(0xFF3F6DF6),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildStatCard(String label, String value) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF5F7F9),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Column(
+          children: [
+            Text(
+              label,
+              style: const TextStyle(color: Colors.grey, fontSize: 13),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              value,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  // REVISI: Widget Stat Card dengan ukuran yang proporsional dan warna abu terang
-  Widget _buildStatCard(String label, String value) {
-    return Expanded(
+  Widget _buildNavigationBanner(BuildContext context) {
+    return InkWell(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const JadwalPraktikPage()),
+      ),
+      borderRadius: BorderRadius.circular(15),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12), // Padding dikurangi agar tidak kebesaran
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: const Color(0xFFF5F7F9), // Warna abu-abu ultra-light
-          borderRadius: BorderRadius.circular(18), // Radius disamakan dengan box schedule
-          border: Border.all(color: Colors.grey.withOpacity(0.05)),
+          color: const Color(0xFF1E1E1E),
+          borderRadius: BorderRadius.circular(15),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+        child: const Row(
           children: [
+            Icon(Icons.list_alt_rounded, color: Colors.white, size: 20),
+            SizedBox(width: 12),
             Text(
-              label,
-              style: const TextStyle(
-                color: Colors.grey,
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
+              "Lihat Jadwal Lengkap",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 4),
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 20, // Ukuran font disesuaikan agar proporsional
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF1A1C1E),
-              ),
-            ),
+            Spacer(),
+            Icon(Icons.arrow_forward_ios, color: Colors.white, size: 14),
           ],
         ),
       ),

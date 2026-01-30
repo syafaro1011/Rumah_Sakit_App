@@ -147,7 +147,6 @@ class DoctorProfilePage extends StatelessWidget {
     );
   }
 
-  // ... (Widget _infoRow, _scheduleItem, dan _statusBadge tetap sama)
   Widget _infoRow(IconData icon, String label, String value) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),

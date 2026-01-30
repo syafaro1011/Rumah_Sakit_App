@@ -4,6 +4,7 @@ class BookingsModel {
   final String id;
   final String doctorId;
   final String doctorName;
+  final String userName; // 🔥 Tambahkan ini (Nama Pasien)
   final String poli;
   final String photoUrl;
   final String userId;
@@ -11,12 +12,13 @@ class BookingsModel {
   final String time;
   final String status; 
   final int queueNumber;
-  final DateTime? createdAt; // Dibuat nullable agar tidak error saat data baru dikirim
+  final DateTime? createdAt;
 
   BookingsModel({
     required this.id,
     required this.doctorId,
     required this.doctorName,
+    required this.userName, // 🔥 Tambahkan ini
     required this.poli,
     required this.photoUrl,
     required this.userId,
@@ -32,6 +34,7 @@ class BookingsModel {
       id: documentId,
       doctorId: map['doctorId'] ?? '',
       doctorName: map['doctorName'] ?? '',
+      userName: map['userName'] ?? 'Pasien Umum', // 🔥 Tambahkan ini
       poli: map['poli'] ?? '',
       photoUrl: map['photoUrl'] ?? '',
       userId: map['userId'] ?? '',
@@ -39,7 +42,6 @@ class BookingsModel {
       time: map['time'] ?? '',
       status: map['status'] ?? 'pending',
       queueNumber: (map['queueNumber'] as num?)?.toInt() ?? 0,
-      // Proteksi jika createdAt null atau masih berupa serverTimestamp di lokal
       createdAt: map['createdAt'] is Timestamp 
           ? (map['createdAt'] as Timestamp).toDate() 
           : null,
@@ -50,13 +52,14 @@ class BookingsModel {
     return {
       'doctorId': doctorId,
       'doctorName': doctorName,
+      'userName': userName, // 🔥 Tambahkan ini agar tersimpan ke Firestore
       'poli': poli,
       'photoUrl': photoUrl,
       'userId': userId,
       'date': date,
       'time': time,
       'status': status,
-      'queueNumber': queueNumber, // 🔥 Tambahkan ini agar nomor antrean tersimpan
+      'queueNumber': queueNumber,
       'createdAt': createdAt ?? FieldValue.serverTimestamp(),
     };
   }

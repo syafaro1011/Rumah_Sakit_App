@@ -6,65 +6,62 @@ class BookingService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
   Future<int> createAppointment({
-    required DoctorModel doctor,
-    required String selectedDate,
-    required String selectedTime,
-    required String userId,
-  }) async {
-    // 1. CEK APAKAH USER SUDAH DAFTAR DI DOKTER & TANGGAL YANG SAMA
-    final existingCheck = await _db
-        .collection('bookings')
-        .where('userId', isEqualTo: userId)
-        .where('doctorId', isEqualTo: doctor.id)
-        .where('date', isEqualTo: selectedDate)
-        // Kita batasi pengecekan untuk status yang masih aktif (pending/processing)
-        // Jika pasien sudah 'selesai' atau 'dibatalkan', mereka boleh daftar lagi (opsional)
-        .where('status', whereIn: ['pending', 'processing'])
-        .get();
+  required DoctorModel doctor,
+  required String selectedDate,
+  required String selectedTime,
+  required String userId, // 🔥 Tambahkan parameter userName
+}) async {
+  // 1. CEK APAKAH USER SUDAH DAFTAR DI DOKTER & TANGGAL YANG SAMA
+  final existingCheck = await _db
+      .collection('bookings')
+      .where('userId', isEqualTo: userId)
+      .where('doctorId', isEqualTo: doctor.id)
+      .where('date', isEqualTo: selectedDate)
+      .where('status', whereIn: ['pending', 'processing'])
+      .get();
 
-    if (existingCheck.docs.isNotEmpty) {
-      // Jika ditemukan data, lempar error agar ditangkap oleh Try-Catch di UI
-      throw Exception(
-        "Anda sudah memiliki antrean aktif untuk dokter ini di hari yang sama.",
-      );
+  if (existingCheck.docs.isNotEmpty) {
+    throw Exception(
+      "Anda sudah memiliki antrean aktif untuk dokter ini di hari yang sama.",
+    );
+  }
+
+  // 2. JIKA TIDAK ADA DUPLIKASI, LANJUTKAN TRANSAKSI ANTREAN
+  DocumentReference counterRef = _db
+      .collection('counters')
+      .doc('${doctor.id}_$selectedDate');
+
+  return _db.runTransaction((transaction) async {
+    DocumentSnapshot counterSnapshot = await transaction.get(counterRef);
+
+    int nextQueueNumber;
+    if (!counterSnapshot.exists) {
+      nextQueueNumber = 1;
+      transaction.set(counterRef, {'lastNumber': 1});
+    } else {
+      nextQueueNumber =
+          (counterSnapshot.data() as Map<String, dynamic>)['lastNumber'] + 1;
+      transaction.update(counterRef, {'lastNumber': nextQueueNumber});
     }
 
-    // 2. JIKA TIDAK ADA DUPLIKASI, LANJUTKAN TRANSAKSI ANTREAN
-    DocumentReference counterRef = _db
-        .collection('counters')
-        .doc('${doctor.id}_$selectedDate');
-
-    return _db.runTransaction((transaction) async {
-      DocumentSnapshot counterSnapshot = await transaction.get(counterRef);
-
-      int nextQueueNumber;
-      if (!counterSnapshot.exists) {
-        nextQueueNumber = 1;
-        transaction.set(counterRef, {'lastNumber': 1});
-      } else {
-        nextQueueNumber =
-            (counterSnapshot.data() as Map<String, dynamic>)['lastNumber'] + 1;
-        transaction.update(counterRef, {'lastNumber': nextQueueNumber});
-      }
-
-      DocumentReference bookingRef = _db.collection('bookings').doc();
-      transaction.set(bookingRef, {
-        'doctorId': doctor.id,
-        'doctorName': doctor.nama,
-        'poli': doctor.poli,
-        'photoUrl': doctor.photoUrl ?? '',
-        'userId': userId,
-        'date': selectedDate,
-        'time': selectedTime,
-        'queueNumber': nextQueueNumber,
-        'status': 'pending',
-        'status_pembayaran': 'belum_bayar',
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-
-      return nextQueueNumber;
+    DocumentReference bookingRef = _db.collection('bookings').doc();
+    transaction.set(bookingRef, {
+      'doctorId': doctor.id,
+      'doctorName': doctor.nama,
+      'poli': doctor.poli,
+      'photoUrl': doctor.photoUrl ?? '',
+      'userId': userId,
+      'date': selectedDate,
+      'time': selectedTime,
+      'queueNumber': nextQueueNumber,
+      'status': 'pending',
+      'status_pembayaran': 'belum_bayar',
+      'createdAt': FieldValue.serverTimestamp(),
     });
-  }
+
+    return nextQueueNumber;
+  });
+}
 
   // --- LOGIC UNTUK DOKTER ---
 

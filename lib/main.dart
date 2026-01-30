@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:rumahsakitapp/routes/app_routes.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'pages/splash_screen.dart';
 
 void main() async {
@@ -10,6 +11,9 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform, // ieu tong nepi kahapus
   );
+
+  // INITIALIZE INI YANG WAJIB DITAMBAHKAN
+  await initializeDateFormatting('id_ID', null).then((_) => runApp(const MyApp()));
 
   runApp(const MyApp());
 }
