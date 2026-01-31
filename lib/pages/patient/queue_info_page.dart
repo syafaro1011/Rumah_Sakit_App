@@ -42,6 +42,12 @@ class _QueueInfoPageState extends State<QueueInfoPage> {
 
           final myBooking = snapshot.data!.first;
 
+          // LOGIC: Jika status berubah jadi 'success' atau 'checking',
+          // kamu bisa arahkan user ke dashboard atau beri info sedang diperiksa.
+          if (myBooking.status == 'checking') {
+            return _buildServingState(myBooking);
+          }
+
           return StreamBuilder<DocumentSnapshot>(
             stream: _queueService.getCurrentServing(
               myBooking.doctorId,
@@ -50,29 +56,29 @@ class _QueueInfoPageState extends State<QueueInfoPage> {
             builder: (context, servingSnapshot) {
               int nowServing = 0;
               if (servingSnapshot.hasData && servingSnapshot.data!.exists) {
-                try {
-                  nowServing = servingSnapshot.data!.get('nowServing') ?? 0;
-                } catch (e) {
-                  nowServing = 0;
-                }
+                nowServing = servingSnapshot.data!.get('nowServing') ?? 0;
               }
 
               int myNum = myBooking.queueNumber;
               int remaining = (myNum - nowServing).clamp(0, 999);
-
-              // Progress dihitung dari persentase kedekatan (0.0 - 1.0)
-              double progress = 0.0;
-              if (nowServing > 0) {
-                progress = (nowServing / myNum).clamp(0.0, 1.0);
-              }
+              double progress = myNum > 0
+                  ? (nowServing / myNum).clamp(0.0, 1.0)
+                  : 0.0;
 
               return SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.all(20),
                 child: Column(
                   children: [
                     _buildDoctorHeader(myBooking),
                     const SizedBox(height: 20),
-                    _buildQueueCard(myBooking, nowServing, remaining, progress),
+                    // Kirim nowServing sebagai String ke widget circle
+                    _buildQueueCard(
+                      myBooking,
+                      nowServing.toString(),
+                      remaining,
+                      progress,
+                    ),
                     const SizedBox(height: 20),
                     _noteCard(),
                     const SizedBox(height: 40),
@@ -83,6 +89,35 @@ class _QueueInfoPageState extends State<QueueInfoPage> {
             },
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildServingState(BookingsModel booking) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(30),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              LucideIcons.stethoscope,
+              size: 80,
+              color: Color(0xFF3F6DF6),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              "Giliran Anda! 🏥",
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              "Silakan masuk ke ruangan ${booking.doctorName}. Anda sedang dalam proses pemeriksaan.",
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.grey),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -131,10 +166,11 @@ class _QueueInfoPageState extends State<QueueInfoPage> {
 
   Widget _buildQueueCard(
     BookingsModel booking,
-    int serving,
+    String serving, // Diubah jadi String
     int sisa,
     double progress,
   ) {
+    // Logic: Jika sisa antrean 0, berarti giliran user
     bool isMyTurn = sisa == 0;
 
     return Container(
@@ -161,7 +197,7 @@ class _QueueInfoPageState extends State<QueueInfoPage> {
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _queueCircle(
-                serving.toString(),
+                serving, // Gunakan nilai serving dari Stream
                 'Sedang Dilayani',
                 Colors.orange.shade50,
                 Colors.orange,
@@ -175,21 +211,17 @@ class _QueueInfoPageState extends State<QueueInfoPage> {
             ],
           ),
           const SizedBox(height: 30),
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              LinearProgressIndicator(
-                value: progress,
-                minHeight: 12,
-                borderRadius: BorderRadius.circular(10),
-                backgroundColor: Colors.grey.shade100,
-                valueColor: AlwaysStoppedAnimation(
-                  isMyTurn ? Colors.green : const Color(0xFF3F6DF6),
-                ),
-              ),
-            ],
+          LinearProgressIndicator(
+            value: progress,
+            minHeight: 12,
+            borderRadius: BorderRadius.circular(10),
+            backgroundColor: Colors.grey.shade100,
+            valueColor: AlwaysStoppedAnimation(
+              isMyTurn ? Colors.green : const Color(0xFF3F6DF6),
+            ),
           ),
           const SizedBox(height: 16),
+          // Animasi teks yang berubah warna
           AnimatedContainer(
             duration: const Duration(milliseconds: 500),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -198,7 +230,7 @@ class _QueueInfoPageState extends State<QueueInfoPage> {
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
-              isMyTurn ? "SILAHKAN MASUK" : "Sisa $sisa antrean lagi",
+              isMyTurn ? "SILAKAN MASUK" : "Sisa $sisa antrean lagi",
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 color: isMyTurn ? Colors.green : const Color(0xFF3F6DF6),
