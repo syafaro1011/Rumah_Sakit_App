@@ -33,11 +33,22 @@ class DashboardPatientService {
 
     return _db
         .collection('bookings')
-        .where('userId', isEqualTo: uid) // 🔥 Disamakan dengan createAppointment
+        .where('userId', isEqualTo: uid) 
         .where('status', isEqualTo: 'pending') 
         .limit(1)
         .snapshots();
   }
+
+  //untuk touop
+  Future<void> topUpSaldo(int amount) async {
+  final String uid = currentUserId;
+  final docRef = FirebaseFirestore.instance.collection('users').doc(uid);
+
+  // Menggunakan FieldValue.increment agar lebih aman dari race condition
+  await docRef.update({
+    'saldo': FieldValue.increment(amount),
+  });
+}
 
   /// Fungsi untuk logout
   Future<void> signOut() async {

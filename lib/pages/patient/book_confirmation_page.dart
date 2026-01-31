@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:rumahsakitapp/services/dashboard_patient_service.dart';
 import '/services/booking_service.dart'; 
 import '/model/doctor_model.dart'; 
 import 'package:rumahsakitapp/routes/app_routes.dart';
@@ -126,7 +127,7 @@ class _BookConfirmationPageState extends State<BookConfirmationPage> {
                 Navigator.pushNamedAndRemoveUntil(
                   context, 
                   AppRoutes.queueInfo, 
-                  (route) => false // Bersihkan history navigasi
+                  (route) => route.isFirst
                 );
               },
               child: const Text("Lihat Antrean Saya", style: TextStyle(color: Colors.white)),

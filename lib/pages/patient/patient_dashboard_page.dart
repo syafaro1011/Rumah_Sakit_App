@@ -208,7 +208,7 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Saldo Dompet',
+                    'Saldo',
                     style: TextStyle(color: Colors.white70, fontSize: 13),
                   ),
                   const SizedBox(height: 4),
@@ -223,8 +223,26 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
                 ],
               ),
               ElevatedButton(
-                onPressed: () {
-                  // Tambahkan navigasi top up di sini jika perlu
+                onPressed: () async {
+                  try {
+                    await _dashboardService.topUpSaldo(50000);
+
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          backgroundColor: Colors.green,
+                          content: Text("Kamu telah topup sebesar 50.000"),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text("Gagal Top Up: $e")),
+                      );
+                    }
+                  }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.white.withOpacity(0.2),

@@ -19,7 +19,7 @@ class BookingService {
         .where('userId', isEqualTo: userId)
         .where('doctorId', isEqualTo: doctor.id)
         .where('date', isEqualTo: selectedDate)
-        .where('status', whereIn: ['pending', 'processing'])
+        .where('status', whereIn: ['pending', 'checking'])
         .get();
 
     if (existingCheck.docs.isNotEmpty) {
@@ -52,13 +52,13 @@ class BookingService {
       transaction.set(bookingRef, {
         'doctorId': doctor.id,
         'doctorName': doctor.nama,
-        'userName': userName, // 🔥 Simpan Nama Pasien
+        'userName': userName, 
         'poli': doctor.poli,
         'photoUrl': doctor.photoUrl ?? '',
         'userId': userId,
         'date': selectedDate,
         'time': selectedTime,
-        'keluhan': keluhan, // 🔥 Simpan Keluhan Pasien
+        'keluhan': keluhan, 
         'queueNumber': nextQueueNumber,
         'status': 'pending',
         'status_pembayaran': 'belum_bayar',
