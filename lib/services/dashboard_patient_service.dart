@@ -17,6 +17,16 @@ class DashboardPatientService {
     return _db.collection('users').doc(uid).get();
   }
 
+  String get currentUserId {
+    final User? user = _auth.currentUser;
+    if (user != null) {
+      return user.uid;
+    } else {
+      // Kamu bisa melempar error atau menangani kondisi logout di sini
+      throw Exception("User tidak ditemukan. Silakan login kembali.");
+    }
+  }
+
   /// Mengambil booking aktif terbaru hari ini
   Stream<QuerySnapshot> getTodayBooking() {
     String uid = _auth.currentUser!.uid;

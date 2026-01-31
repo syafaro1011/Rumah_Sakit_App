@@ -13,11 +13,9 @@ class RekamMedisPage extends StatefulWidget {
 class _RekamMedisPageState extends State<RekamMedisPage> {
   final DoctorService _doctorService = DoctorService();
 
-  // Controller Input Medis
   final TextEditingController _diagnosisController = TextEditingController();
   final TextEditingController _resepController = TextEditingController();
 
-  // Controller Input Biaya
   final TextEditingController _biayaKonsultasiController =
       TextEditingController(text: "0");
   final TextEditingController _biayaObatController = TextEditingController(
@@ -27,7 +25,6 @@ class _RekamMedisPageState extends State<RekamMedisPage> {
   int _totalHarga = 0;
   bool _isLoading = false;
 
-  // Fungsi menghitung total otomatis
   void _calculateTotal() {
     int konsultasi = int.tryParse(_biayaKonsultasiController.text) ?? 0;
     int obat = int.tryParse(_biayaObatController.text) ?? 0;
@@ -36,7 +33,6 @@ class _RekamMedisPageState extends State<RekamMedisPage> {
     });
   }
 
-  // LOGIKA SIMPAN KE FIREBASE
   Future<void> _handleSave(String bId, String pId, String dId) async {
     if (_diagnosisController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -70,7 +66,7 @@ class _RekamMedisPageState extends State<RekamMedisPage> {
             content: Text("Pemeriksaan Selesai!"),
           ),
         );
-        Navigator.pop(context); // Kembali ke antrean
+        Navigator.pop(context);
       }
     } catch (e) {
       ScaffoldMessenger.of(
@@ -83,14 +79,19 @@ class _RekamMedisPageState extends State<RekamMedisPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Menangkap data booking yang dikirim dari halaman antrean
-    final dynamic bookingData = ModalRoute.of(context)!.settings.arguments;
+    final args =
+        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
 
-    // Asumsikan data yang dikirim adalah objek BookingsModel atau Map lengkap
-    final String bookingId = bookingData['bookingId'] ?? '';
-    final String patientId = bookingData['userId'] ?? '';
-    final String doctorId = bookingData['doctorId'] ?? '';
-    final String namaPasien = bookingData['nama_pasien'] ?? 'Pasien Umum';
+    // Jika data kosong, tampilkan loading agar tidak crash
+    if (args == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    final String bookingId = args['bookingId'] ?? '';
+    final String patientId = args['userId'] ?? '';
+    final String doctorId = args['doctorId'] ?? '';
+    final String namaPasien = args['nama_pasien'] ?? 'Pasien';
+    final String keluhanPasien = args['keluhan'] ?? '-';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFF),
@@ -121,12 +122,34 @@ class _RekamMedisPageState extends State<RekamMedisPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 1. Kartu Informasi Pasien (Modern & Clean)
-                  _buildPatientInfoCard(namaPasien, bookingData['date'] ?? '-'),
+                  _buildPatientInfoCard(namaPasien, args['date'] ?? '-'),
+
+                  const SizedBox(height: 20),
+
+                  // 🔥 1. Tampilkan Keluhan Pasien sebagai referensi Dokter
+                  _buildSectionCard(
+                    title: "Keluhan Pasien",
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.orange.shade100),
+                      ),
+                      child: Text(
+                        keluhanPasien,
+                        style: TextStyle(
+                          color: Colors.orange.shade900,
+                          fontStyle: FontStyle.italic,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ),
 
                   const SizedBox(height: 25),
 
-                  // 2. Form Rekam Medis
                   _buildSectionCard(
                     title: "Hasil Diagnosa",
                     child: _buildInputField(
@@ -149,7 +172,6 @@ class _RekamMedisPageState extends State<RekamMedisPage> {
 
                   const SizedBox(height: 25),
 
-                  // 3. Section Biaya
                   _buildSectionCard(
                     title: "Rincian Biaya (Rp)",
                     child: Column(
@@ -196,7 +218,6 @@ class _RekamMedisPageState extends State<RekamMedisPage> {
 
                   const SizedBox(height: 40),
 
-                  // 4. Tombol Submit
                   SizedBox(
                     width: double.infinity,
                     height: 55,
@@ -226,7 +247,7 @@ class _RekamMedisPageState extends State<RekamMedisPage> {
     );
   }
 
-  // Widget Helper: Card Informasi Pasien
+  // Widget Helper tetap sama...
   Widget _buildPatientInfoCard(String nama, String tanggal) {
     return Container(
       width: double.infinity,
@@ -265,7 +286,6 @@ class _RekamMedisPageState extends State<RekamMedisPage> {
     );
   }
 
-  // Widget Helper: Container Section
   Widget _buildSectionCard({required String title, required Widget child}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -284,7 +304,6 @@ class _RekamMedisPageState extends State<RekamMedisPage> {
     );
   }
 
-  // Widget Helper: Input Teks
   Widget _buildInputField(
     TextEditingController controller,
     String hint, {
@@ -309,7 +328,6 @@ class _RekamMedisPageState extends State<RekamMedisPage> {
     );
   }
 
-  // Widget Helper: Input Angka
   Widget _buildNumberField(
     TextEditingController controller,
     String label,

@@ -6,76 +6,79 @@ class BookingService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
   Future<int> createAppointment({
-  required DoctorModel doctor,
-  required String selectedDate,
-  required String selectedTime,
-  required String userId, // 🔥 Tambahkan parameter userName
-}) async {
-  // 1. CEK APAKAH USER SUDAH DAFTAR DI DOKTER & TANGGAL YANG SAMA
-  final existingCheck = await _db
-      .collection('bookings')
-      .where('userId', isEqualTo: userId)
-      .where('doctorId', isEqualTo: doctor.id)
-      .where('date', isEqualTo: selectedDate)
-      .where('status', whereIn: ['pending', 'processing'])
-      .get();
+    required DoctorModel doctor,
+    required String selectedDate,
+    required String selectedTime,
+    required String userId,
+    required String userName, 
+    required String keluhan, 
+  }) async {
+    // 1. CEK APAKAH USER SUDAH DAFTAR DI DOKTER & TANGGAL YANG SAMA
+    final existingCheck = await _db
+        .collection('bookings')
+        .where('userId', isEqualTo: userId)
+        .where('doctorId', isEqualTo: doctor.id)
+        .where('date', isEqualTo: selectedDate)
+        .where('status', whereIn: ['pending', 'processing'])
+        .get();
 
-  if (existingCheck.docs.isNotEmpty) {
-    throw Exception(
-      "Anda sudah memiliki antrean aktif untuk dokter ini di hari yang sama.",
-    );
-  }
-
-  // 2. JIKA TIDAK ADA DUPLIKASI, LANJUTKAN TRANSAKSI ANTREAN
-  DocumentReference counterRef = _db
-      .collection('counters')
-      .doc('${doctor.id}_$selectedDate');
-
-  return _db.runTransaction((transaction) async {
-    DocumentSnapshot counterSnapshot = await transaction.get(counterRef);
-
-    int nextQueueNumber;
-    if (!counterSnapshot.exists) {
-      nextQueueNumber = 1;
-      transaction.set(counterRef, {'lastNumber': 1});
-    } else {
-      nextQueueNumber =
-          (counterSnapshot.data() as Map<String, dynamic>)['lastNumber'] + 1;
-      transaction.update(counterRef, {'lastNumber': nextQueueNumber});
+    if (existingCheck.docs.isNotEmpty) {
+      throw Exception(
+        "Anda sudah memiliki antrean aktif untuk dokter ini di hari yang sama.",
+      );
     }
 
-    DocumentReference bookingRef = _db.collection('bookings').doc();
-    transaction.set(bookingRef, {
-      'doctorId': doctor.id,
-      'doctorName': doctor.nama,
-      'poli': doctor.poli,
-      'photoUrl': doctor.photoUrl ?? '',
-      'userId': userId,
-      'date': selectedDate,
-      'time': selectedTime,
-      'queueNumber': nextQueueNumber,
-      'status': 'pending',
-      'status_pembayaran': 'belum_bayar',
-      'createdAt': FieldValue.serverTimestamp(),
-    });
+    // 2. JIKA TIDAK ADA DUPLIKASI, LANJUTKAN TRANSAKSI ANTREAN
+    DocumentReference counterRef = _db
+        .collection('counters')
+        .doc('${doctor.id}_$selectedDate');
 
-    return nextQueueNumber;
-  });
-}
+    return _db.runTransaction((transaction) async {
+      DocumentSnapshot counterSnapshot = await transaction.get(counterRef);
+
+      int nextQueueNumber;
+      if (!counterSnapshot.exists) {
+        nextQueueNumber = 1;
+        transaction.set(counterRef, {'lastNumber': 1});
+      } else {
+        nextQueueNumber =
+            (counterSnapshot.data() as Map<String, dynamic>)['lastNumber'] + 1;
+        transaction.update(counterRef, {'lastNumber': nextQueueNumber});
+      }
+
+      DocumentReference bookingRef = _db.collection('bookings').doc();
+
+      // Menggunakan data dari parameter yang baru ditambahkan
+      transaction.set(bookingRef, {
+        'doctorId': doctor.id,
+        'doctorName': doctor.nama,
+        'userName': userName, // 🔥 Simpan Nama Pasien
+        'poli': doctor.poli,
+        'photoUrl': doctor.photoUrl ?? '',
+        'userId': userId,
+        'date': selectedDate,
+        'time': selectedTime,
+        'keluhan': keluhan, // 🔥 Simpan Keluhan Pasien
+        'queueNumber': nextQueueNumber,
+        'status': 'pending',
+        'status_pembayaran': 'belum_bayar',
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      return nextQueueNumber;
+    });
+  }
 
   // --- LOGIC UNTUK DOKTER ---
 
   /// Stream antrean untuk dokter secara real-time
-  Stream<List<BookingsModel>> streamDoctorQueue(
-    String doctorId,
-    String date,
-  ) {
+  Stream<List<BookingsModel>> streamDoctorQueue(String doctorId, String date) {
     return _db
         .collection('bookings')
         .where('doctorId', isEqualTo: doctorId)
         .where('date', isEqualTo: date)
-        .where('status', isEqualTo: 'pending') // Hanya pasien yang mengantre
-        .orderBy('queueNumber', descending: false) // Urutkan 1, 2, 3...
+        .where('status', isEqualTo: 'pending')
+        .orderBy('queueNumber', descending: false)
         .snapshots()
         .map(
           (snapshot) => snapshot.docs

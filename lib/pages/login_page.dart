@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:rumahsakitapp/pages/signup_page.dart';
+import 'package:rumahsakitapp/pages/forgot_password_page.dart';
 import 'package:rumahsakitapp/routes/app_routes.dart';
-// Pastikan path import ini benar sesuai struktur folder Anda
 import 'package:rumahsakitapp/services/auth_service.dart';
 
 class LoginPage extends StatefulWidget {
@@ -16,7 +16,7 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final AuthService _authService = AuthService();
-  
+
   bool _obscurePassword = true;
   bool _isLoading = false; // Untuk indikator loading
 
@@ -40,7 +40,7 @@ class _LoginPageState extends State<LoginPage> {
 
       if (!mounted) return;
 
-      // 3. Logika Navigasi Berdasarkan Role
+      // Login Berdasarkan Role
       if (role == 'pasien') {
         Navigator.pushReplacementNamed(context, AppRoutes.patientDashboard);
         print("Login sukses sebagai Pasien");
@@ -52,14 +52,12 @@ class _LoginPageState extends State<LoginPage> {
         print("Login sukses sebagai Admin");
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Login Berhasil sebagai $role')),
-      );
-
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Login Berhasil sebagai $role')));
     } catch (e) {
-      // Menangani error (Password salah, User tidak ditemukan, dll)
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Login Gagal: ${e.toString()}')),
+        SnackBar(content: Text('Login Gagal: Email atau Password Anda Salah')),
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -136,7 +134,14 @@ class _LoginPageState extends State<LoginPage> {
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
-                  onPressed: () {},
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ForgotPasswordPage(),
+                      ),
+                    );
+                  },
                   child: const Text(
                     'Lupa password?',
                     style: TextStyle(color: Color(0xFF3F6DF6)),
@@ -151,7 +156,9 @@ class _LoginPageState extends State<LoginPage> {
                 width: double.infinity,
                 height: 52,
                 child: ElevatedButton(
-                  onPressed: _isLoading ? null : _handleLogin, // Disable jika loading
+                  onPressed: _isLoading
+                      ? null
+                      : _handleLogin, // Disable jika loading
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF3F6DF6),
                     shape: RoundedRectangleBorder(
@@ -159,16 +166,16 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     elevation: 3,
                   ),
-                  child: _isLoading 
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text(
-                        'Sign In',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
+                  child: _isLoading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text(
+                          'Sign In',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
                         ),
-                      ),
                 ),
               ),
 

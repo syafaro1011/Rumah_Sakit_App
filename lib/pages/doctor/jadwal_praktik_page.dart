@@ -56,12 +56,7 @@ class _JadwalPraktikPageState extends State<JadwalPraktikPage> {
               ],
             ),
           ),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: _buildPatientList(widget.doctorId, dateFilter),
-            ),
-          ),
+          Expanded(child: _buildPatientList(widget.doctorId, dateFilter)),
         ],
       ),
     );
@@ -76,18 +71,13 @@ class _JadwalPraktikPageState extends State<JadwalPraktikPage> {
         }
 
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade50,
-              borderRadius: BorderRadius.circular(15),
-            ),
-            child: const Column(
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.event_busy, color: Colors.grey, size: 40),
-                SizedBox(height: 10),
-                Text(
+                Icon(Icons.event_busy, color: Colors.grey.shade300, size: 60),
+                const SizedBox(height: 10),
+                const Text(
                   "Tidak ada pasien untuk tanggal ini.",
                   style: TextStyle(color: Colors.grey),
                 ),
@@ -97,8 +87,7 @@ class _JadwalPraktikPageState extends State<JadwalPraktikPage> {
         }
 
         return ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 24),
           itemCount: snapshot.data!.length,
           itemBuilder: (context, index) {
             final booking = snapshot.data![index];
@@ -123,7 +112,6 @@ class _JadwalPraktikPageState extends State<JadwalPraktikPage> {
                   child: InkWell(
                     borderRadius: BorderRadius.circular(15),
                     onTap: () async {
-                      // 1. Validasi Status Selesai/Batal
                       if (booking.status.toLowerCase() == 'success' ||
                           booking.status.toLowerCase() == 'selesai') {
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -136,47 +124,59 @@ class _JadwalPraktikPageState extends State<JadwalPraktikPage> {
                         return;
                       }
 
-                      // 2. Munculkan Dialog Konfirmasi / Panggil Pasien
-                      bool? confirm = await showDialog(
+                      // Dialog Konfirmasi
+                      bool? confirm = await showDialog<bool>(
                         context: context,
                         builder: (context) => AlertDialog(
-                          title: const Text("Konfirmasi"),
-                          content: Text("Panggil $displayUserName sekarang?"),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          title: const Text("Panggil Pasien"),
+                          content: Text(
+                            "Mulai pemeriksaan untuk $displayUserName?",
+                          ),
                           actions: [
                             TextButton(
                               onPressed: () => Navigator.pop(context, false),
-                              child: const Text("Batal"),
+                              child: const Text(
+                                "Batal",
+                                style: TextStyle(color: Colors.grey),
+                              ),
                             ),
                             ElevatedButton(
-                              onPressed: () => Navigator.pop(context, true),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFF3F6DF6),
                               ),
-                              child: const Text("Panggil"),
+                              onPressed: () => Navigator.pop(context, true),
+                              child: const Text(
+                                "Panggil",
+                                style: TextStyle(color: Colors.white),
+                              ),
                             ),
                           ],
                         ),
                       );
 
-                      if (confirm == true) {
-                        // 3. Update status ke 'checking' di Firestore
+                      if (confirm == true && mounted) {
+                        // 🔥 Tambahkan pengecekan mounted
                         await _doctorService.updateBookingStatus(
                           booking.id,
                           'checking',
                         );
 
-                        // 4. Navigasi ke Rekam Medis
                         if (mounted) {
+                          // 🔥 Cek mounted lagi sebelum navigasi
                           Navigator.pushNamed(
                             context,
                             AppRoutes.rekamMedis,
                             arguments: {
                               'bookingId': booking.id,
                               'userId': booking.userId,
-                              'doctorId': booking.doctorId,
+                              'doctorId': widget.doctorId,
                               'nama_pasien': displayUserName,
+                              'keluhan': booking
+                                  .keluhan ?? 'Tidak ada keluhan', // 🔥 Data keluhan dikirim ke RekamMedisPage
                               'date': booking.date,
-                              'keluhan': 'Keluhan umum',
                             },
                           );
                         }
@@ -225,9 +225,16 @@ class _JadwalPraktikPageState extends State<JadwalPraktikPage> {
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            "Konsultasi Umum",
-                            style: TextStyle(color: Colors.grey, fontSize: 13),
+                          Text(
+                            booking.keluhan.isNotEmpty
+                                ? booking.keluhan
+                                : "Tidak ada keluhan tertulis",
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.grey,
+                              fontSize: 13,
+                            ),
                           ),
                           const SizedBox(height: 4),
                           Container(
@@ -286,6 +293,7 @@ class _JadwalPraktikPageState extends State<JadwalPraktikPage> {
       height: 90,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
         itemCount: 7,
         itemBuilder: (context, index) {
           DateTime date = DateTime.now().add(Duration(days: index));

@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:rumahsakitapp/routes/app_routes.dart';
 import 'package:rumahsakitapp/services/dashboard_patient_service.dart';
+import 'package:rumahsakitapp/services/notification_service.dart';
 import '../widgets/patient_bottom_nav.dart';
 
 class PatientDashboardPage extends StatefulWidget {
@@ -14,9 +15,86 @@ class PatientDashboardPage extends StatefulWidget {
 class _PatientDashboardPageState extends State<PatientDashboardPage> {
   final DashboardPatientService _dashboardService = DashboardPatientService();
 
-  // Helper untuk format Rupiah
   String _formatRupiah(int amount) {
     return "Rp ${amount.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}";
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    NotificationService.init();
+    _listenToMedicalUpdates();
+  }
+
+  void _listenToMedicalUpdates() {
+    final String uid = _dashboardService.currentUserId;
+
+    // 1. Listen ke Antrian (Bookings) & Logika Antrian Sisa 2
+    FirebaseFirestore.instance
+        .collection('bookings')
+        .where('patientId', isEqualTo: uid)
+        .where('status', isNotEqualTo: 'Selesai')
+        .snapshots()
+        .listen((snapshot) {
+          for (var change in snapshot.docChanges) {
+            var data = change.doc.data() as Map<String, dynamic>;
+            int myNumber = data['queueNumber'] ?? 0;
+            String doctorId = data['doctorId'] ?? '';
+
+            // A. Logika: Dipanggil Dokter (Modified)
+            if (change.type == DocumentChangeType.modified) {
+              if (data['status'] == 'Dipanggil') {
+                NotificationService.showNotification(
+                  title: "Giliran Anda! 🏥",
+                  body: "Silakan masuk ke ruangan ${data['doctorName']}.",
+                );
+              }
+            }
+
+            // B. Logika: Sisa Antrian 2 (Mendengarkan koleksi 'queues')
+            if (doctorId.isNotEmpty) {
+              _listenToQueueProgress(doctorId, myNumber);
+            }
+          }
+        });
+
+    // 2. Listen ke Rekam Medis (Notifikasi Pembayaran)
+    FirebaseFirestore.instance
+        .collection('medical_records')
+        .where('patientId', isEqualTo: uid)
+        .snapshots()
+        .listen((snapshot) {
+          for (var change in snapshot.docChanges) {
+            if (change.type == DocumentChangeType.added) {
+              var data = change.doc.data() as Map<String, dynamic>;
+              NotificationService.showNotification(
+                title: "Pemeriksaan Selesai ✅",
+                body:
+                    "Rekam medis tersedia. Silakan bayar ${_formatRupiah(data['totalBayar'] ?? 0)}",
+              );
+            }
+          }
+        });
+  }
+
+  // Fungsi pembantu untuk memantau progress antrian secara spesifik
+  void _listenToQueueProgress(String doctorId, int myNumber) {
+    FirebaseFirestore.instance
+        .collection('queues')
+        .doc(doctorId)
+        .snapshots()
+        .listen((snap) {
+          if (snap.exists) {
+            int currentRunning = snap.data()?['currentNumber'] ?? 0;
+            if (myNumber == currentRunning + 2 && currentRunning != 0) {
+              NotificationService.showNotification(
+                title: "Siap-siap! ⚠️",
+                body:
+                    "2 antrian lagi giliran Anda. Mohon mendekat ke ruang periksa.",
+              );
+            }
+          }
+        });
   }
 
   @override
@@ -31,58 +109,61 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              FutureBuilder<DocumentSnapshot>(
-                future: _dashboardService.getUserProfile(),
-                builder: (context, snapshot) {
-                  if (snapshot.hasData) {
-                    return _header(snapshot.data!['nama'] ?? 'User');
-                  }
-                  return _header('...');
-                },
-              ),
-              const SizedBox(height: 20),
-              
-              // KARTU SALDO BARU
-              _balanceCard(),
-              
-              const SizedBox(height: 24),
-              _todayPracticeCard(),
-              const SizedBox(height: 24),
-              
-              const Text(
-                'Layanan Utama',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-              const SizedBox(height: 16),
-              
-              _menuCard(
-                icon: Icons.calendar_today_outlined,
-                title: 'Booking Dokter',
-                subtitle: 'Buat jadwal praktik',
-                bgColor: const Color(0xFFEAF1FF),
-                onTap: () => Navigator.pushNamed(context, AppRoutes.pilihPoli),
-              ),
-              _menuCard(
-                icon: Icons.access_time,
-                title: 'Antrian',
-                subtitle: 'Lihat Antrian Online',
-                bgColor: const Color(0xFFFFF4DB),
-                onTap: () => Navigator.pushNamed(context, AppRoutes.queueInfo),
-              ),
-              _menuCard(
-                icon: Icons.description_outlined,
-                title: 'Rekam Medis',
-                subtitle: 'Riwayat Kesehatan Anda',
-                bgColor: const Color(0xFFFFE9E4),
-                onTap: () => Navigator.pushNamed(context, AppRoutes.medicalRecord),
-              ),
-              const SizedBox(height: 80),
-            ],
+        child: RefreshIndicator(
+          onRefresh: () async => setState(() {}),
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                FutureBuilder<DocumentSnapshot>(
+                  future: _dashboardService.getUserProfile(),
+                  builder: (context, snapshot) {
+                    String name = 'User';
+                    if (snapshot.hasData && snapshot.data!.exists) {
+                      name = snapshot.data!['nama'] ?? 'User';
+                    }
+                    return _header(name);
+                  },
+                ),
+                const SizedBox(height: 20),
+                _balanceCard(),
+                const SizedBox(height: 24),
+                _todayPracticeCard(),
+                const SizedBox(height: 24),
+                const Text(
+                  'Layanan Utama',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                const SizedBox(height: 16),
+                _menuCard(
+                  icon: Icons.calendar_today_outlined,
+                  title: 'Booking Dokter',
+                  subtitle: 'Buat jadwal praktik',
+                  bgColor: const Color(0xFFEAF1FF),
+                  onTap: () =>
+                      Navigator.pushNamed(context, AppRoutes.pilihPoli),
+                ),
+                _menuCard(
+                  icon: Icons.access_time,
+                  title: 'Antrian',
+                  subtitle: 'Lihat Antrian Online',
+                  bgColor: const Color(0xFFFFF4DB),
+                  onTap: () =>
+                      Navigator.pushNamed(context, AppRoutes.queueInfo),
+                ),
+                _menuCard(
+                  icon: Icons.description_outlined,
+                  title: 'Rekam Medis',
+                  subtitle: 'Riwayat Kesehatan Anda',
+                  bgColor: const Color(0xFFFFE9E4),
+                  onTap: () =>
+                      Navigator.pushNamed(context, AppRoutes.medicalRecord),
+                ),
+                const SizedBox(height: 80),
+              ],
+            ),
           ),
         ),
       ),
@@ -94,7 +175,7 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
   Widget _balanceCard() {
     return StreamBuilder<DocumentSnapshot>(
       // Menggunakan snapshots agar real-time saat saldo berubah
-      stream: _dashboardService.getUserProfileStream(), 
+      stream: _dashboardService.getUserProfileStream(),
       builder: (context, snapshot) {
         int balance = 0;
         if (snapshot.hasData && snapshot.data!.exists) {

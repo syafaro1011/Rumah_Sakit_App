@@ -4,9 +4,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _db = FirebaseFirestore.instance;
-
-  // --- TAMBAHAN BARU ---
-
   // Mengambil user yang sedang login saat ini dari Firebase Auth
   User? get currentUser => _auth.currentUser;
 
@@ -16,14 +13,11 @@ class AuthService {
   }
 
   // Mengambil data detail user dari Firestore berdasarkan UID
-  // Berguna jika ingin menampilkan Nama atau NIK di halaman profil
   Stream<DocumentSnapshot> getUserData(String uid) {
     return _db.collection('users').doc(uid).snapshots();
   }
 
-  // --- LOGIKA LAMA (TIDAK DIUBAH) ---
-
-  // 1. FUNGSI REGISTRASI 
+  // FUNGSI REGISTRASI 
   Future<void> registerPasien({
     required String email,
     required String password,
@@ -31,13 +25,13 @@ class AuthService {
     required String nik,
     required String tanggalLahir,
   }) async {
-    // A. Buat user di Firebase Auth
+    // Buat user di Firebase Auth
     UserCredential res = await _auth.createUserWithEmailAndPassword(
       email: email, 
       password: password
     );
 
-    // B. Simpan detail ke Firestore menggunakan UID yang sama
+    // Simpan detail ke Firestore menggunakan UID yang sama
     await _db.collection('users').doc(res.user!.uid).set({
       'uid': res.user!.uid,
       'nama': nama,
@@ -49,7 +43,7 @@ class AuthService {
     });
   }
 
-  // 2. FUNGSI LOGIN 
+  // FUNGSI LOGIN 
   Future<String?> loginAndGetRole(String email, String password) async {
     // A. Login ke Auth
     UserCredential res = await _auth.signInWithEmailAndPassword(
@@ -59,7 +53,15 @@ class AuthService {
 
     // B. Ambil data role dari Firestore
     DocumentSnapshot userDoc = await _db.collection('users').doc(res.user!.uid).get();
-    
     return userDoc.get('role');
   }
+
+  // LUPA PW
+  Future<void> resetPassword(String email) async {
+  try {
+    await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+  } on FirebaseAuthException catch (e) {
+    throw e.message ?? "Terjadi kesalahan saat mengirim email reset.";
+  }
+}
 }

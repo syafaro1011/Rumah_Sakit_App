@@ -23,24 +23,24 @@ class DoctorService {
 
   // AMBIL ANTREAN DARI KOLEKSI 'bookings'
   Stream<List<BookingsModel>> getBookingsByDate(String doctorId, String date) {
-    return _db
-        .collection('bookings')
-        .where('doctorId', isEqualTo: doctorId)
-        .where('date', isEqualTo: date)
-        .where('status', isEqualTo: "pending")
-        .orderBy('queueNumber', descending: false)
-        .snapshots()
-        .map(
-          (snapshot) => snapshot.docs
-              .map(
-                (doc) => BookingsModel.fromMap(
-                  doc.data() as Map<String, dynamic>,
-                  doc.id,
-                ),
-              )
-              .toList(),
-        );
-  }
+  return _db
+      .collection('bookings')
+      .where('doctorId', isEqualTo: doctorId)
+      .where('date', isEqualTo: date)
+      .where('status', whereIn: ['pending', 'checking']) 
+      .orderBy('queueNumber', descending: false)
+      .snapshots()
+      .map(
+        (snapshot) => snapshot.docs
+            .map(
+              (doc) => BookingsModel.fromMap(
+                doc.data() as Map<String, dynamic>,
+                doc.id,
+              ),
+            )
+            .toList(),
+      );
+}
 
   // AMBIL JADWAL DOKTER
   Stream<QuerySnapshot> getJadwalDokter(String dokterId) {

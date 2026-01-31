@@ -287,9 +287,7 @@ class _EditPatientProfilePageState extends State<EditPatientProfilePage> {
             ),
     );
   }
-
-  // --- UI Components (Avatar, SectionCard, TextField) tetap seperti kode Anda ---
-  // Pastikan menambahkan parameter keyboardType pada _textField agar UX lebih baik
+  
   Widget _textField(
     String label,
     TextEditingController controller, {
