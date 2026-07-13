@@ -34,16 +34,15 @@ class _RekamMedisPageState extends State<RekamMedisPage> {
   }
 
   Future<void> _handleSave(String bId, String pId, String dId) async {
-    if (_diagnosisController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Diagnosa tidak boleh kosong!")),
-      );
-      return;
-    }
+  if (_diagnosisController.text.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Diagnosis wajib diisi")));
+    return;
+  }
 
     setState(() => _isLoading = true);
 
     try {
+    setState(() => _isLoading = true);
       final record = MedicalRecordModel(
         bookingId: bId,
         patientId: pId,
@@ -60,22 +59,17 @@ class _RekamMedisPageState extends State<RekamMedisPage> {
       await _doctorService.submitMedicalRecord(bookingId: bId, record: record);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            backgroundColor: Colors.green,
-            content: Text("Pemeriksaan Selesai!"),
-          ),
-        );
-        Navigator.pop(context);
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Gagal menyimpan: $e")));
-    } finally {
-      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(backgroundColor: Colors.green, content: Text("Pemeriksaan Selesai & Data Disimpan")),
+      );
+      Navigator.pop(context); // Kembali ke daftar antrean
     }
+  } catch (e) {
+    // Handle error
+  } finally {
+    if (mounted) setState(() => _isLoading = false);
   }
+}
 
   @override
   Widget build(BuildContext context) {

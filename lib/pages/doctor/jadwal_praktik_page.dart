@@ -97,8 +97,7 @@ class _JadwalPraktikPageState extends State<JadwalPraktikPage> {
               builder: (context, userSnapshot) {
                 String displayUserName = "Memuat nama...";
                 if (userSnapshot.hasData && userSnapshot.data!.exists) {
-                  final userData =
-                      userSnapshot.data!.data() as Map<String, dynamic>;
+                  final userData = userSnapshot.data!.data() as Map<String, dynamic>;
                   displayUserName = userData['nama'] ?? "Pasien Tanpa Nama";
                 }
 
@@ -112,83 +111,77 @@ class _JadwalPraktikPageState extends State<JadwalPraktikPage> {
                   child: InkWell(
                     borderRadius: BorderRadius.circular(15),
                     onTap: () async {
+                      // Jika status sudah selesai, jangan izinkan panggil lagi
                       if (booking.status.toLowerCase() == 'success' ||
                           booking.status.toLowerCase() == 'selesai') {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              "Pasien ini sudah selesai diperiksa.",
-                            ),
-                          ),
+                          const SnackBar(content: Text("Pasien ini sudah selesai diperiksa.")),
                         );
                         return;
                       }
 
-                      // Dialog Konfirmasi
+                      // Dialog Konfirmasi Panggil Pasien
                       bool? confirm = await showDialog<bool>(
                         context: context,
                         builder: (context) => AlertDialog(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(15),
-                          ),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                           title: const Text("Panggil Pasien"),
-                          content: Text(
-                            "Mulai pemeriksaan untuk $displayUserName?",
-                          ),
+                          content: Text("Mulai pemeriksaan untuk $displayUserName (Antrean #${booking.queueNumber})?"),
                           actions: [
                             TextButton(
                               onPressed: () => Navigator.pop(context, false),
-                              child: const Text(
-                                "Batal",
-                                style: TextStyle(color: Colors.grey),
-                              ),
+                              child: const Text("Batal", style: TextStyle(color: Colors.grey)),
                             ),
                             ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF3F6DF6),
-                              ),
+                              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF3F6DF6)),
                               onPressed: () => Navigator.pop(context, true),
-                              child: const Text(
-                                "Panggil",
-                                style: TextStyle(color: Colors.white),
-                              ),
+                              child: const Text("Panggil", style: TextStyle(color: Colors.white)),
                             ),
                           ],
                         ),
                       );
 
                       if (confirm == true && mounted) {
-                        // 🔥 Tambahkan pengecekan mounted
-                        await _doctorService.updateBookingStatus(
-                          booking.id,
-                          'checking',
-                        );
+                        try {
+                          // 1. Update status booking pasien menjadi 'checking' di koleksi bookings
+                          await _doctorService.updateBookingStatus(booking.id, 'checking');
 
-                        if (mounted) {
-                          // 🔥 Cek mounted lagi sebelum navigasi
-                          Navigator.pushNamed(
-                            context,
-                            AppRoutes.rekamMedis,
-                            arguments: {
-                              'bookingId': booking.id,
-                              'userId': booking.userId,
-                              'doctorId': widget.doctorId,
-                              'nama_pasien': displayUserName,
-                              'keluhan': booking
-                                  .keluhan ?? 'Tidak ada keluhan', // 🔥 Data keluhan dikirim ke RekamMedisPage
-                              'date': booking.date,
-                            },
+                          // 2. 🔥 UPDATE COUNTER: Kirim nomor antrean ke koleksi counters 
+                          // agar HP Pasien bisa menampilkan status "SILAHKAN MASUK"
+                          await FirebaseFirestore.instance
+                              .collection('counters')
+                              .doc('${widget.doctorId}_${booking.date}')
+                              .set({
+                            'nowServing': booking.queueNumber,
+                            'lastUpdate': FieldValue.serverTimestamp(),
+                          }, SetOptions(merge: true));
+
+                          if (mounted) {
+                            // Pindah ke halaman Rekam Medis
+                            Navigator.pushNamed(
+                              context,
+                              AppRoutes.rekamMedis,
+                              arguments: {
+                                'bookingId': booking.id,
+                                'userId': booking.userId,
+                                'doctorId': widget.doctorId,
+                                'nama_pasien': displayUserName,
+                                'keluhan': booking.keluhan.isNotEmpty ? booking.keluhan : 'Tidak ada keluhan',
+                                'date': booking.date,
+                              },
+                            );
+                          }
+                        } catch (e) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text("Gagal memanggil pasien: $e")),
                           );
                         }
                       }
                     },
                     child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 8,
-                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                       leading: SizedBox(
-                        width: 65,
+                        width: 70,
                         child: Row(
                           children: [
                             Text(
@@ -196,56 +189,39 @@ class _JadwalPraktikPageState extends State<JadwalPraktikPage> {
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                                 color: Color(0xFF3F6DF6),
-                                fontSize: 14,
+                                fontSize: 16,
                               ),
                             ),
-                            const SizedBox(width: 8),
+                            const Spacer(),
                             Container(
                               padding: const EdgeInsets.all(6),
                               decoration: BoxDecoration(
                                 color: const Color(0xFF3F6DF6).withOpacity(0.1),
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(
-                                Icons.person,
-                                color: Color(0xFF3F6DF6),
-                                size: 20,
-                              ),
+                              child: const Icon(Icons.person, color: Color(0xFF3F6DF6), size: 20),
                             ),
                           ],
                         ),
                       ),
                       title: Text(
                         displayUserName,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                       ),
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            booking.keluhan.isNotEmpty
-                                ? booking.keluhan
-                                : "Tidak ada keluhan tertulis",
+                            booking.keluhan.isNotEmpty ? booking.keluhan : "Tidak ada keluhan tertulis",
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Colors.grey,
-                              fontSize: 13,
-                            ),
+                            style: const TextStyle(color: Colors.grey, fontSize: 13),
                           ),
                           const SizedBox(height: 4),
                           Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 2,
-                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
-                              color: _getStatusColor(
-                                booking.status,
-                              ).withOpacity(0.1),
+                              color: _getStatusColor(booking.status).withOpacity(0.1),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
@@ -259,23 +235,9 @@ class _JadwalPraktikPageState extends State<JadwalPraktikPage> {
                           ),
                         ],
                       ),
-                      trailing: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF3F6DF6),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          booking.time,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                          ),
-                        ),
+                      trailing: Text(
+                        booking.time,
+                        style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey),
                       ),
                     ),
                   ),
@@ -294,11 +256,10 @@ class _JadwalPraktikPageState extends State<JadwalPraktikPage> {
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 12),
-        itemCount: 7,
+        itemCount: 14, // Tampilkan 2 minggu ke depan
         itemBuilder: (context, index) {
           DateTime date = DateTime.now().add(Duration(days: index));
-          bool isSelected =
-              DateFormat('yyyy-MM-dd').format(date) ==
+          bool isSelected = DateFormat('yyyy-MM-dd').format(date) ==
               DateFormat('yyyy-MM-dd').format(selectedDate);
 
           return GestureDetector(
@@ -308,10 +269,11 @@ class _JadwalPraktikPageState extends State<JadwalPraktikPage> {
               width: 70,
               margin: const EdgeInsets.only(right: 12),
               decoration: BoxDecoration(
-                color: isSelected
-                    ? const Color(0xFF3F6DF6)
-                    : const Color(0xFFF1F5FF),
+                color: isSelected ? const Color(0xFF3F6DF6) : const Color(0xFFF1F5FF),
                 borderRadius: BorderRadius.circular(18),
+                boxShadow: isSelected 
+                  ? [BoxShadow(color: const Color(0xFF3F6DF6).withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))] 
+                  : [],
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -321,18 +283,14 @@ class _JadwalPraktikPageState extends State<JadwalPraktikPage> {
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: isSelected
-                          ? Colors.white
-                          : const Color(0xFF3F6DF6),
+                      color: isSelected ? Colors.white : const Color(0xFF3F6DF6),
                     ),
                   ),
                   Text(
                     DateFormat('EEE').format(date),
                     style: TextStyle(
                       fontSize: 12,
-                      color: isSelected
-                          ? Colors.white70
-                          : const Color(0xFF3F6DF6),
+                      color: isSelected ? Colors.white70 : const Color(0xFF3F6DF6),
                     ),
                   ),
                 ],
@@ -357,7 +315,7 @@ class _JadwalPraktikPageState extends State<JadwalPraktikPage> {
       case 'checking':
         return Colors.blue;
       default:
-        return Colors.purpleAccent;
+        return Colors.grey;
     }
   }
 }

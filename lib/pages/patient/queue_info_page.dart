@@ -42,12 +42,7 @@ class _QueueInfoPageState extends State<QueueInfoPage> {
 
           final myBooking = snapshot.data!.first;
 
-          // LOGIC: Jika status berubah jadi 'success' atau 'checking',
-          // kamu bisa arahkan user ke dashboard atau beri info sedang diperiksa.
-          if (myBooking.status == 'checking') {
-            return _buildServingState(myBooking);
-          }
-
+          // Stream kedua untuk memantau nomor yang sedang dilayani (nowServing)
           return StreamBuilder<DocumentSnapshot>(
             stream: _queueService.getCurrentServing(
               myBooking.doctorId,
@@ -55,15 +50,25 @@ class _QueueInfoPageState extends State<QueueInfoPage> {
             ),
             builder: (context, servingSnapshot) {
               int nowServing = 0;
+
+              // PERBAIKAN: Validasi dokumen dan field agar tidak crash 'Bad State'
               if (servingSnapshot.hasData && servingSnapshot.data!.exists) {
-                nowServing = servingSnapshot.data!.get('nowServing') ?? 0;
+                final data = servingSnapshot.data!.data() as Map<String, dynamic>?;
+                if (data != null && data.containsKey('nowServing')) {
+                  nowServing = data['nowServing'] ?? 0;
+                }
               }
 
               int myNum = myBooking.queueNumber;
+              // Menghitung sisa antrean (tidak boleh minus)
               int remaining = (myNum - nowServing).clamp(0, 999);
-              double progress = myNum > 0
-                  ? (nowServing / myNum).clamp(0.0, 1.0)
-                  : 0.0;
+
+              // Progress bar logic
+              // Full (1.0) jika status sudah 'checking' (dipanggil) atau nomor sudah terlewati
+              double progress =
+                  (myBooking.status == 'checking' || nowServing >= myNum)
+                      ? 1.0
+                      : (myNum > 0 ? (nowServing / myNum).clamp(0.0, 1.0) : 0.0);
 
               return SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
@@ -72,17 +77,16 @@ class _QueueInfoPageState extends State<QueueInfoPage> {
                   children: [
                     _buildDoctorHeader(myBooking),
                     const SizedBox(height: 20),
-                    // Kirim nowServing sebagai String ke widget circle
-                    _buildQueueCard(
-                      myBooking,
-                      nowServing.toString(),
-                      remaining,
-                      progress,
-                    ),
+                    // Jika status sudah dipanggil dokter, tampilkan UI khusus Giliran Anda
+                    myBooking.status == 'checking' 
+                        ? _buildServingState(myBooking)
+                        : _buildQueueCard(myBooking, nowServing, remaining, progress),
                     const SizedBox(height: 20),
                     _noteCard(),
                     const SizedBox(height: 40),
-                    _cancelButton(context, myBooking.id),
+                    // Tombol batal hanya muncul jika status masih 'pending'
+                    if (myBooking.status == 'pending')
+                      _cancelButton(context, myBooking.id),
                   ],
                 ),
               );
@@ -94,30 +98,33 @@ class _QueueInfoPageState extends State<QueueInfoPage> {
   }
 
   Widget _buildServingState(BookingsModel booking) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(30),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              LucideIcons.stethoscope,
-              size: 80,
-              color: Color(0xFF3F6DF6),
-            ),
-            const SizedBox(height: 24),
-            const Text(
-              "Giliran Anda! 🏥",
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              "Silakan masuk ke ruangan ${booking.doctorName}. Anda sedang dalam proses pemeriksaan.",
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.grey),
-            ),
-          ],
-        ),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(30),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: Colors.green.shade200, width: 2),
+      ),
+      child: Column(
+        children: [
+          const Icon(
+            LucideIcons.stethoscope,
+            size: 80,
+            color: Colors.green,
+          ),
+          const SizedBox(height: 24),
+          const Text(
+            "GILIRAN ANDA!",
+            style: TextStyle(fontSize: 22,  color: Colors.green),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            "Silakan masuk ke ruangan ${booking.doctorName}. Dokter sedang menunggu Anda.",
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.grey.shade700, fontSize: 14, height: 1.5),
+          ),
+        ],
       ),
     );
   }
@@ -139,38 +146,39 @@ class _QueueInfoPageState extends State<QueueInfoPage> {
   }
 
   Widget _buildDoctorHeader(BookingsModel booking) {
-    return Row(
-      children: [
-        CircleAvatar(
-          radius: 25,
-          backgroundColor: Colors.blue.shade100,
-          backgroundImage: booking.photoUrl.isNotEmpty
-              ? NetworkImage(booking.photoUrl)
-              : null,
-          child: booking.photoUrl.isEmpty ? const Icon(Icons.person) : null,
-        ),
-        const SizedBox(width: 12),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              booking.doctorName,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-            ),
-            Text(booking.poli, style: TextStyle(color: Colors.blue.shade700)),
-          ],
-        ),
-      ],
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 25,
+            backgroundColor: Colors.blue.shade100,
+            backgroundImage: booking.photoUrl.isNotEmpty
+                ? NetworkImage(booking.photoUrl)
+                : null,
+            child: booking.photoUrl.isEmpty ? const Icon(Icons.person) : null,
+          ),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                booking.doctorName,
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              Text(booking.poli, style: TextStyle(color: Colors.blue.shade700, fontSize: 13)),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildQueueCard(
-    BookingsModel booking,
-    String serving, // Diubah jadi String
-    int sisa,
-    double progress,
-  ) {
-    // Logic: Jika sisa antrean 0, berarti giliran user
+  Widget _buildQueueCard(BookingsModel booking, int serving, int sisa, double progress) {
     bool isMyTurn = sisa == 0;
 
     return Container(
@@ -190,14 +198,14 @@ class _QueueInfoPageState extends State<QueueInfoPage> {
         children: [
           const Text(
             "Status Antrean Real-time",
-            style: TextStyle(color: Colors.grey, fontSize: 12),
+            style: TextStyle(color: Colors.grey, fontSize: 12, letterSpacing: 1.2),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 25),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _queueCircle(
-                serving, // Gunakan nilai serving dari Stream
+                serving.toString(),
                 'Sedang Dilayani',
                 Colors.orange.shade50,
                 Colors.orange,
@@ -210,31 +218,25 @@ class _QueueInfoPageState extends State<QueueInfoPage> {
               ),
             ],
           ),
-          const SizedBox(height: 30),
-          LinearProgressIndicator(
-            value: progress,
-            minHeight: 12,
+          const SizedBox(height: 35),
+          ClipRRect(
             borderRadius: BorderRadius.circular(10),
-            backgroundColor: Colors.grey.shade100,
-            valueColor: AlwaysStoppedAnimation(
-              isMyTurn ? Colors.green : const Color(0xFF3F6DF6),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 10,
+              backgroundColor: Colors.grey.shade100,
+              valueColor: AlwaysStoppedAnimation(
+                isMyTurn ? Colors.green : const Color(0xFF3F6DF6),
+              ),
             ),
           ),
-          const SizedBox(height: 16),
-          // Animasi teks yang berubah warna
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 500),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: isMyTurn ? Colors.green.shade50 : Colors.blue.shade50,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              isMyTurn ? "SILAKAN MASUK" : "Sisa $sisa antrean lagi",
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: isMyTurn ? Colors.green : const Color(0xFF3F6DF6),
-              ),
+          const SizedBox(height: 20),
+          Text(
+            isMyTurn ? "SILAHKAN BERSIAP" : "Sisa $sisa antrean lagi",
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: isMyTurn ? Colors.green : const Color(0xFF3F6DF6),
             ),
           ),
         ],
@@ -242,30 +244,38 @@ class _QueueInfoPageState extends State<QueueInfoPage> {
     );
   }
 
-  Widget _queueCircle(
-    String value,
-    String label,
-    Color bgColor,
-    Color textColor,
-  ) {
+  Widget _queueCircle(String value, String label, Color bgColor, Color textColor) {
     return Column(
       children: [
         Container(
-          width: 75,
-          height: 75,
+          width: 85,
+          height: 85,
           alignment: Alignment.center,
-          decoration: BoxDecoration(color: bgColor, shape: BoxShape.circle),
+          decoration: BoxDecoration(
+            color: bgColor,
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white, width: 4),
+            boxShadow: [
+              BoxShadow(
+                color: textColor.withOpacity(0.1),
+                blurRadius: 10,
+                spreadRadius: 2,
+              )
+            ]
+          ),
           child: Text(
             value,
             style: TextStyle(
-              fontSize: 26,
-              fontWeight: FontWeight.bold,
+              fontSize: 28,
               color: textColor,
             ),
           ),
         ),
-        const SizedBox(height: 10),
-        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+        const SizedBox(height: 12),
+        Text(
+          label,
+          style: const TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.w500),
+        ),
       ],
     );
   }
@@ -280,12 +290,12 @@ class _QueueInfoPageState extends State<QueueInfoPage> {
       ),
       child: Row(
         children: [
-          Icon(LucideIcons.info, color: Colors.amber.shade800, size: 20),
+          Icon(LucideIcons.info, color: Colors.amber.shade800, size: 22),
           const SizedBox(width: 12),
           const Expanded(
             child: Text(
-              'Harap standby di area tunggu. Jika nomor terlewat, Anda mungkin harus mendaftar ulang.',
-              style: TextStyle(fontSize: 12, color: Colors.black87),
+              'Harap standby di area tunggu. Jika nomor terlewat, Anda mungkin harus mendaftar ulang di loket.',
+              style: TextStyle(fontSize: 12, color: Colors.black87, height: 1.4),
             ),
           ),
         ],
@@ -296,9 +306,10 @@ class _QueueInfoPageState extends State<QueueInfoPage> {
   Widget _cancelButton(BuildContext context, String bookingId) {
     return TextButton(
       onPressed: () => _showCancelConfirmation(context, bookingId),
+      style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12)),
       child: const Text(
         'Batalkan Janji Temu',
-        style: TextStyle(color: Colors.red, fontWeight: FontWeight.w600),
+        style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
       ),
     );
   }
@@ -310,7 +321,7 @@ class _QueueInfoPageState extends State<QueueInfoPage> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Batalkan Antrean?'),
         content: const Text(
-          'Tindakan ini tidak dapat dibatalkan. Nomor antrean Anda akan hangus.',
+          'Tindakan ini tidak dapat dibatalkan. Nomor antrean Anda akan dikosongkan.',
         ),
         actions: [
           TextButton(
@@ -320,22 +331,16 @@ class _QueueInfoPageState extends State<QueueInfoPage> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
-              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
             onPressed: () async {
               await _queueService.cancelBooking(bookingId);
               if (context.mounted) {
-                Navigator.of(context).pop(); // Tutup dialog
-                Navigator.pushReplacementNamed(
-                  context,
-                  AppRoutes.patientDashboard,
-                );
+                Navigator.of(context).pop();
+                Navigator.pushReplacementNamed(context, AppRoutes.patientDashboard);
               }
             },
-            child: const Text(
-              'Ya, Batalkan',
-              style: TextStyle(color: Colors.white),
-            ),
+            child: const Text('Ya, Batalkan', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
